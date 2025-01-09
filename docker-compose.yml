@@ -1,0 +1,42 @@
+# version: '3.9'
+# services:
+#   php-app:
+#     build:
+#       context: .
+#     container_name: php-app-container
+#     ports:
+#       - "6060:80" # Map port 8080 on the host to port 80 in the container
+#     depends_on:
+#       - mysql-container
+#     networks:
+#       - app-network
+
+#   mysql-container:
+#     image: mysql:latest
+#     container_name: mysql-container
+#     environment:
+#       MYSQL_ROOT_PASSWORD: IMSEMS2
+#       MYSQL_DATABASE: warehouse
+#     ports:
+#       - "3306:3306"
+#     networks:
+#       - app-network
+
+# networks:
+#   app-network:
+#     driver: bridge
+
+version: '3.9'
+services:
+  php-app:
+    build:
+      context: .
+    container_name: php-app-container
+    ports:
+      - "6060:80" # Map port 6060 on the host to port 80 in the container
+    networks:
+      - my-docker-net
+
+networks:
+  my-docker-net:
+    external: true # Use the existing network
