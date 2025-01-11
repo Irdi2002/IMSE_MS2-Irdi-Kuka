@@ -14,12 +14,18 @@ $mongoClient = new MongoDB\Client($uri);
 $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
 // Drop existing collections to avoid duplicates
+// Drop existing collections to avoid duplicates
 $mongoDb->Warehouse->drop();
-$mongoDb->SalesOrder->drop();
-$mongoDb->TransferHeader->drop();
+$mongoDb->Aisle->drop();
 $mongoDb->Vendor->drop();
 $mongoDb->Customer->drop();
 $mongoDb->Product->drop();
+$mongoDb->PurchaseOrder->drop();
+$mongoDb->SalesOrder->drop();
+$mongoDb->SalesOrderDetails->drop();
+$mongoDb->TransferHeader->drop();
+$mongoDb->TransferLines->drop();
+$mongoDb->WarehouseInventory->drop();
 
 // MySQL Configuration
 $mysqli = new mysqli("MySQLDockerContainer", "root", "IMSEMS2", "IMSE_MS2");
@@ -76,16 +82,24 @@ if ($result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $warehouseID = $row["WarehouseID"];
         
-        // Fetch Aisles
-        $aisleSql = "SELECT * FROM Aisle WHERE WarehouseID = $warehouseID";
-        $aisleResult = $mysqli->query($aisleSql);
+        // Fetch Aisles for this warehouse
+        $aisleSql = "SELECT * FROM Aisle WHERE WarehouseID = ?";
+        $aisleStmt = $mysqli->prepare($aisleSql);
+        $aisleStmt->bind_param("i", $warehouseID);
+        $aisleStmt->execute();
+        $aisleResult = $aisleStmt->get_result();
+        
         $aisles = [];
         while ($aisleRow = $aisleResult->fetch_assoc()) {
             $aisleNr = $aisleRow["AisleNr"];
             
             // Fetch Inventory for each Aisle
-            $inventorySql = "SELECT * FROM WarehouseInventory WHERE WarehouseID = $warehouseID AND AisleNr = $aisleNr";
-            $inventoryResult = $mysqli->query($inventorySql);
+            $inventorySql = "SELECT * FROM WarehouseInventory WHERE WarehouseID = ? AND AisleNr = ?";
+            $inventoryStmt = $mysqli->prepare($inventorySql);
+            $inventoryStmt->bind_param("ii", $warehouseID, $aisleNr);
+            $inventoryStmt->execute();
+            $inventoryResult = $inventoryStmt->get_result();
+            
             $inventory = [];
             while ($inventoryRow = $inventoryResult->fetch_assoc()) {
                 $inventory[] = [
@@ -111,8 +125,12 @@ if ($result->num_rows > 0) {
         $orderID = $row["OrderID"];
         
         // Fetch Order Details
-        $detailsSql = "SELECT * FROM SalesOrderDetails WHERE OrderID = '$orderID'";
-        $detailsResult = $mysqli->query($detailsSql);
+        $detailsSql = "SELECT * FROM SalesOrderDetails WHERE OrderID = ?";
+        $detailsStmt = $mysqli->prepare($detailsSql);
+        $detailsStmt->bind_param("s", $orderID);
+        $detailsStmt->execute();
+        $detailsResult = $detailsStmt->get_result();
+        
         $details = [];
         while ($detailsRow = $detailsResult->fetch_assoc()) {
             $details[] = [
@@ -136,8 +154,12 @@ if ($result->num_rows > 0) {
         $transferID = $row["TransferID"];
         
         // Fetch Transfer Lines
-        $linesSql = "SELECT * FROM TransferLines WHERE TransferID = $transferID";
-        $linesResult = $mysqli->query($linesSql);
+        $linesSql = "SELECT * FROM TransferLines WHERE TransferID = ?";
+        $linesStmt = $mysqli->prepare($linesSql);
+        $linesStmt->bind_param("i", $transferID);
+        $linesStmt->execute();
+        $linesResult = $linesStmt->get_result();
+        
         $lines = [];
         while ($lineRow = $linesResult->fetch_assoc()) {
             $lines[] = [
