@@ -167,7 +167,7 @@ try {
                 <?php foreach ($products as $product): ?>
                     <tr>
                         <td>
-                            <a href="edit_product.php?ProductID=<?= htmlspecialchars($product['ProductID']) ?>">
+                            <a href="view_product.php?ProductID=<?= htmlspecialchars($product['ProductID']) ?>">
                                 <?= htmlspecialchars($product['ProductID']) ?>
                             </a>
                         </td>

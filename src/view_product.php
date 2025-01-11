@@ -30,7 +30,6 @@ try {
         exit;
     }
 
-    // Handle form submission for updates (optional)
 } catch (PDOException $e) {
     echo "<p>Error: " . $e->getMessage() . "</p>";
     die();
@@ -82,7 +81,7 @@ try {
             background-color: #005BB5; /* Darker Blue */
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
-        form {
+        .details {
             background-color: #fff;
             max-width: 600px;
             margin: 0 auto;
@@ -97,14 +96,17 @@ try {
             color: #333;
         }
         input[type="text"],
-        input[type="number"],
-        input[type="submit"] {
+        input[type="number"] {
             width: calc(100% - 20px);
             padding: 10px;
             margin-bottom: 15px;
             border: 1px solid #ddd;
             border-radius: 4px;
             box-sizing: border-box;
+            background-color: #f9f9f9; /* Light gray for read-only fields */
+        }
+        input[readonly] {
+            color: #555; /* Slightly darker text color for read-only */
         }
     </style>
 </head>
@@ -113,7 +115,7 @@ try {
         <div class="success-message"><?= htmlspecialchars($message) ?></div>
     <?php endif; ?>
 
-    <h1>Edit Product</h1>
+    <h1>View Product</h1>
     <div class="btn-container">
         <a href="view_products.php">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18px" height="18px" style="vertical-align: middle;">
@@ -123,24 +125,24 @@ try {
         </a>
     </div>
 
-    <form method="POST">
+    <div class="details">
         <label for="name">Name:</label>
-        <input type="text" id="name" name="name" value="<?= htmlspecialchars($product['Name']) ?>" required>
+        <input type="text" id="name" value="<?= htmlspecialchars($product['Name']) ?>" readonly>
 
         <label for="description">Description:</label>
-        <input type="text" id="description" name="description" value="<?= htmlspecialchars($product['Description']) ?>">
+        <input type="text" id="description" value="<?= htmlspecialchars($product['Description']) ?>" readonly>
 
         <label for="weight">Weight:</label>
-        <input type="number" step="0.01" id="weight" name="weight" value="<?= htmlspecialchars($product['Weight']) ?>">
+        <input type="number" step="0.01" id="weight" value="<?= htmlspecialchars($product['Weight']) ?>" readonly>
 
         <label for="unit_of_measure">Unit of Measure:</label>
-        <input type="text" id="unit_of_measure" name="unit_of_measure" value="<?= htmlspecialchars($product['UnitOfMeasure']) ?>">
+        <input type="text" id="unit_of_measure" value="<?= htmlspecialchars($product['UnitOfMeasure']) ?>" readonly>
 
         <label for="price">Price:</label>
-        <input type="number" step="0.01" id="price" name="price" value="<?= htmlspecialchars($product['Price']) ?>" required>
+        <input type="number" step="0.01" id="price" value="<?= htmlspecialchars($product['Price']) ?>" readonly>
 
         <label for="currency">Currency:</label>
-        <input type="text" id="currency" name="currency" value="<?= htmlspecialchars($product['Currency']) ?>" required>
-    </form>
+        <input type="text" id="currency" value="<?= htmlspecialchars($product['Currency']) ?>" readonly>
+    </div>
 </body>
 </html>

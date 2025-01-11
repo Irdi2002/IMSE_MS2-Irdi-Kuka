@@ -40,7 +40,7 @@ try {
         $productID = $pdo->lastInsertId();
 
         // Redirect to the edit page with a success message
-        header("Location: edit_product.php?ProductID=$productID&message=Product%20inserted%20successfully!");
+        header("Location: view_product.php?ProductID=$productID&message=Product%20inserted%20successfully!");
         exit;
     }
 } catch (PDOException $e) {

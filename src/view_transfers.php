@@ -138,19 +138,19 @@ try {
                 <?php foreach ($transfers as $transfer): ?>
                     <tr>
                         <td>
-                            <a href="edit_transfer.php?TransferID=<?= htmlspecialchars($transfer['TransferID']) ?>">
+                            <a href="view_transfer.php?TransferID=<?= htmlspecialchars($transfer['TransferID']) ?>">
                                 <?= htmlspecialchars($transfer['TransferID']) ?>
                             </a>
                         </td>
                         <td><?= htmlspecialchars($transfer['TransferDate']) ?></td>
                         <td>
-                            <a href="edit_warehouse.php?WarehouseName=<?= htmlspecialchars($transfer['OriginWarehouseName']) ?>">
+                            <a href="view_warehouse.php?WarehouseName=<?= htmlspecialchars($transfer['OriginWarehouseName']) ?>">
                                 <?= htmlspecialchars($transfer['OriginWarehouseName']) ?>
                             </a>
                         </td>
                         <td><?= htmlspecialchars($transfer['OriginAisleName']) ?></td>
                         <td>
-                            <a href="edit_warehouse.php?WarehouseName=<?= htmlspecialchars($transfer['DestinationWarehouseName']) ?>">
+                            <a href="view_warehouse.php?WarehouseName=<?= htmlspecialchars($transfer['DestinationWarehouseName']) ?>">
                                 <?= htmlspecialchars($transfer['DestinationWarehouseName']) ?>
                             </a>
                         </td>

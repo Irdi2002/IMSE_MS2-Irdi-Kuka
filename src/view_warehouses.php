@@ -121,7 +121,7 @@ try {
                 <?php foreach ($warehouses as $warehouse): ?>
                     <tr>
                         <td>
-                            <a href="edit_warehouse.php?WarehouseName=<?= htmlspecialchars($warehouse['WarehouseName']) ?>">
+                            <a href="view_warehouse.php?WarehouseName=<?= htmlspecialchars($warehouse['WarehouseName']) ?>">
                                 <?= htmlspecialchars($warehouse['WarehouseName']) ?>
                             </a>
                         </td>

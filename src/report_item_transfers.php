@@ -223,7 +223,7 @@ try {
                 <tbody>
                     <?php foreach ($transfers as $transfer): ?>
                         <tr>
-                            <td><a href="edit_transfer.php?TransferID=<?= htmlspecialchars($transfer['TransferID']) ?>" class="transfer-link"><?= htmlspecialchars($transfer['TransferID']) ?></a></td>
+                            <td><a href="view_transfer.php?TransferID=<?= htmlspecialchars($transfer['TransferID']) ?>" class="transfer-link"><?= htmlspecialchars($transfer['TransferID']) ?></a></td>
                             <td><?= htmlspecialchars($transfer['TransferDate']) ?></td>
                             <td><?= htmlspecialchars($transfer['OriginWarehouseName']) ?></td>
                             <td><?= htmlspecialchars($transfer['OriginAisleName']) ?></td>
