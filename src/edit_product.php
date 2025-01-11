@@ -42,7 +42,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Product</title>
+    <title>View Product</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -106,15 +106,6 @@ try {
             border-radius: 4px;
             box-sizing: border-box;
         }
-        input[type="submit"] {
-            background-color: #0078D7; /* Vibrant Blue */
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        input[type="submit"]:hover {
-            background-color: #005BB5; /* Darker Blue */
-        }
     </style>
 </head>
 <body>
@@ -150,8 +141,6 @@ try {
 
         <label for="currency">Currency:</label>
         <input type="text" id="currency" name="currency" value="<?= htmlspecialchars($product['Currency']) ?>" required>
-
-        <input type="submit" value="Save Changes">
     </form>
 </body>
 </html>

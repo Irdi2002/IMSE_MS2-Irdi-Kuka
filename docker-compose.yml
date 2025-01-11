@@ -1,42 +1,72 @@
-# version: '3.9'
-# services:
-#   php-app:
-#     build:
-#       context: .
-#     container_name: php-app-container
-#     ports:
-#       - "6060:80" # Map port 8080 on the host to port 80 in the container
-#     depends_on:
-#       - mysql-container
-#     networks:
-#       - app-network
+version: '3.7'
 
-#   mysql-container:
-#     image: mysql:latest
-#     container_name: mysql-container
-#     environment:
-#       MYSQL_ROOT_PASSWORD: IMSEMS2
-#       MYSQL_DATABASE: warehouse
-#     ports:
-#       - "3306:3306"
-#     networks:
-#       - app-network
-
-# networks:
-#   app-network:
-#     driver: bridge
-
-version: '3.9'
 services:
-  php-app:
-    build:
-      context: .
-    container_name: php-app-container
+  MySQLDockerContainer:
+    container_name: MySQLDockerContainer
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: IMSEMS2
+      MYSQL_DATABASE: IMSE_MS2
+      MYSQL_ROOT_HOST: '%' 
     ports:
-      - "6060:80" # Map port 6060 on the host to port 80 in the container
+      - "6000:3306"  # Connect to MySQL on host port 6060 (instead of default 3306)
+    volumes:
+      - ./MySQL-init:/docker-entrypoint-initdb.d # Mount the SQL script directory
     networks:
-      - my-docker-net
+    - IMSEDockerNetwork
+
+  MyAdminer:
+    container_name: MyAdminer
+    image: adminer:latest
+    depends_on:
+      - MySQLDockerContainer
+    environment:
+      ADMINER_DEFAULT_SERVER: MySQLDockerContainer
+    ports:
+      - "6080:8080"  # Expose Adminer on host port 3000 (instead of 8080)
+    networks:
+    - IMSEDockerNetwork
+
+  MyMongoDBContainer:
+    container_name: MyMongoDBContainer
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: Irdi
+      MONGO_INITDB_ROOT_PASSWORD: Password1
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27018:27017"  # Expose MongoDB on host port 27018 (instead of default 27017)
+    networks:
+    - IMSEDockerNetwork
+
+  MyMongoDBExpress:
+    container_name: MyMongoDBExpress
+    image: mongo-express:latest
+    depends_on:
+      - MyMongoDBContainer
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: Irdi
+      ME_CONFIG_MONGODB_ADMINPASSWORD: Password1
+      ME_CONFIG_MONGODB_SERVER: MyMongoDBContainer
+    ports:
+      - "6081:8081"  # Expose MongoDB Express on host port 3002 (instead of 8081)
+    networks:
+    - IMSEDockerNetwork
+
+  php-app:
+      build:
+        context: .
+      container_name: php-app-container
+      ports:
+        - "6060:80" # Map port 6060 on the host to port 80 in the container
+      networks:
+        - IMSEDockerNetwork
 
 networks:
-  my-docker-net:
-    external: true # Use the existing network
+  IMSEDockerNetwork:
+    # external: true # Use the existing network
+
+volumes:
+  mysql-data:
+  mongo-data:
