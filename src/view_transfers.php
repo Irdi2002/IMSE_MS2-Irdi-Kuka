@@ -19,28 +19,52 @@ try {
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     if ($useMongoDb) {
-        // Fetch transfers from MongoDB
+        // Step 1: Fetch all warehouses and build mappings
+        $warehousesCursor = $mongoDb->Warehouse->find([]);
+
+        $warehouseNames = [];
+        $aisleNames = [];
+
+        foreach ($warehousesCursor as $warehouse) {
+            $warehouseID = (int)$warehouse['warehouseID'];
+            $warehouseNames[$warehouseID] = $warehouse['name'] ?? 'Unknown Warehouse';
+
+            if (isset($warehouse['aisles']) && is_array($warehouse['aisles'])) {
+                foreach ($warehouse['aisles'] as $aisle) {
+                    $aisleNr = (int)$aisle['AisleNr'];
+                    $aisleNames[$warehouseID][$aisleNr] = $aisle['Name'] ?? 'Unknown Aisle';
+                }
+            }
+        }
+
+        // Step 2: Fetch transfers from MongoDB
         $transfers = $mongoDb->TransferHeader->find([], [
             'sort' => ['TransferID' => 1],
         ]);
 
         $transferList = [];
         foreach ($transfers as $transfer) {
-            $transferList[] = [
+            $originWarehouseID = (int)$transfer['originWarehouseID'];
+            $originAisleNr = (int)$transfer['originAisle'];
+            $destinationWarehouseID = (int)$transfer['destinationWarehouseID'];
+            $destinationAisleNr = (int)$transfer['destinationAisle'];
+
+            $transferItem = [
                 'TransferID' => $transfer['TransferID'],
                 'TransferDate' => $transfer['transferDate']->toDateTime()->format('Y-m-d'),
-                'OriginWarehouseName' => $transfer['originWarehouseID'],
-                'OriginAisleName' => $transfer['originAisle'],
-                'DestinationWarehouseName' => $transfer['destinationWarehouseID'],
-                'DestinationAisleName' => $transfer['destinationAisle'],
+                'OriginWarehouseName' => $warehouseNames[$originWarehouseID] ?? 'Unknown Warehouse',
+                'OriginAisleName' => $aisleNames[$originWarehouseID][$originAisleNr] ?? 'Unknown Aisle',
+                'DestinationWarehouseName' => $warehouseNames[$destinationWarehouseID] ?? 'Unknown Warehouse',
+                'DestinationAisleName' => $aisleNames[$destinationWarehouseID][$destinationAisleNr] ?? 'Unknown Aisle',
             ];
+
+            $transferList[] = $transferItem;
         }
     } else {
-        // Use MySQL
+        // MySQL logic
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Fetch transfers with warehouse and aisle names, ordered by TransferID
         $stmt = $pdo->prepare("
             SELECT th.TransferID, th.TransferDate, 
                    ow.WarehouseName AS OriginWarehouseName, oa.AisleName AS OriginAisleName, 
@@ -56,7 +80,7 @@ try {
         $transferList = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Exception $e) {
-    echo "<p>Error: " . $e->getMessage() . "</p>";
+    echo "<p>Error: " . htmlspecialchars($e->getMessage()) . "</p>";
     die();
 }
 ?>
@@ -92,12 +116,9 @@ try {
             font-size: 16px;
             font-weight: bold;
             border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease-in-out;
         }
         .btn-container a:hover {
             background-color: #005BB5; /* Darker Blue */
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
         table {
             width: 100%;
@@ -122,11 +143,6 @@ try {
         }
         tr:hover {
             background-color: #f1f1f1;
-            transform: scale(1.01);
-            transition: all 0.2s ease-in-out;
-        }
-        td {
-            color: #555; /* Subtle Gray */
         }
         td a {
             text-decoration: none;
@@ -135,17 +151,18 @@ try {
         td a:hover {
             color: #005BB5; /* Darker Blue */
         }
+        .no-data {
+            text-align: center;
+            color: #777;
+            font-size: 18px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <h1>Transfer List</h1>
     <div class="btn-container">
-        <a href="home.php" class="new-transfer-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18px" height="18px" style="vertical-align: middle;">
-                <path fill="currentColor" d="M21 11H6.414l5.293-5.293-1.414-1.414L3.586 12l6.707 6.707 1.414-1.414L6.414 13H21v-2z"/>
-            </svg>
-            Home
-        </a>
+        <a href="home.php" class="new-transfer-btn">Home</a>
         <a href="insert_transfer_form.php" class="new-transfer-btn">+ New Transfer</a>
     </div>
     <?php if (!empty($transferList)): ?>

@@ -113,8 +113,12 @@ try {
 
                 // 3) Execution Phase: Perform updates since all validations passed
 
+                // Ensure ProductID is treated as an integer
+                $transferCount = $mongoDb->TransferHeader->countDocuments();
+                $nextTransferID = $transferCount + 1;
                 // 3.1) Insert the TransferHeader first
                 $transferHeaderDoc = [
+                    'TransferID'             => $nextTransferID,
                     'originWarehouseID'      => $originWarehouse,
                     'originAisle'            => $originAisle,
                     'destinationWarehouseID' => $destinationWarehouse,
