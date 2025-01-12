@@ -1,6 +1,7 @@
 <?php
 session_start();
 
+// Allow CORS (if needed)
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
@@ -13,7 +14,6 @@ $uri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
 $mongoClient = new MongoDB\Client($uri);
 $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
-// Drop existing collections to avoid duplicates
 // Drop existing collections to avoid duplicates
 $mongoDb->Warehouse->drop();
 $mongoDb->Aisle->drop();
@@ -34,51 +34,68 @@ if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
 
-// Transform and migrate data
+/**
+ * Transform a Warehouse row + its aisles into a MongoDB-friendly document.
+ */
 function transformWarehouseData($warehouseRow, $aisles) {
     return [
-        "_id" => (string)$warehouseRow["WarehouseID"],
-        "name" => $warehouseRow["WarehouseName"],
+        "_id"     => (string)$warehouseRow["WarehouseID"],
+        "name"    => $warehouseRow["WarehouseName"],
         "address" => $warehouseRow["Address"],
-        "category" => $warehouseRow["Category"],
-        "aisles" => $aisles
+        "category"=> $warehouseRow["Category"],
+        "aisles"  => $aisles
     ];
 }
 
+/**
+ * Transform an Aisle row + inventory into a nested sub-document.
+ */
 function transformAisleData($aisleRow, $inventory) {
     return [
-        "aisleNr" => (int)$aisleRow["AisleNr"],
-        "name" => $aisleRow["AisleName"],
-        "fireExtinguisher" => (bool)$aisleRow["FireExtingusher"],
-        "description" => $aisleRow["Description"],
-        "inventory" => $inventory
+        "aisleNr"         => (string)$aisleRow["AisleNr"],
+        "name"            => $aisleRow["AisleName"],
+        "fireExtinguisher"=> (bool)$aisleRow["FireExtingusher"],
+        "description"     => $aisleRow["Description"],
+        "inventory"       => $inventory
     ];
 }
 
+/**
+ * Transform a SalesOrder + details into a single MongoDB document.
+ */
 function transformSalesOrderData($orderRow, $details) {
     return [
-        "_id" => $orderRow["OrderID"],
-        "customerID" => $orderRow["CustID"],
+        "_id"             => $orderRow["OrderID"],  // Keep as string or int as you prefer
+        "customerID"      => $orderRow["CustID"],
         "totalOrderPrice" => (float)$orderRow["TotalOrderPrice"],
-        "items" => $details
+        "items"           => $details
     ];
 }
 
+/**
+ * Transform a TransferHeader row + lines into a single MongoDB document.
+ */
 function transformTransferHeaderData($headerRow, $lines) {
     return [
-        "_id" => (string)$headerRow["TransferID"],
-        "originWarehouseID" => (string)$headerRow["OriginWarehouseID"],
+        "_id"                    => (string)$headerRow["TransferID"],
+        "originWarehouseID"      => (string)$headerRow["OriginWarehouseID"],
         "destinationWarehouseID" => (string)$headerRow["DestinationWarehouseID"],
-        "transferDate" => new MongoDB\BSON\UTCDateTime(strtotime($headerRow["TransferDate"]) * 1000),
-        "lines" => $lines
+        // Store the aisle numbers so we can later query them
+        "originAisle"            => (string)$headerRow["OriginAisle"],
+        "destinationAisle"       => (string)$headerRow["DestinationAisle"],
+        // Convert TransferDate to MongoDB UTCDateTime
+        "transferDate"           => new MongoDB\BSON\UTCDateTime(strtotime($headerRow["TransferDate"]) * 1000),
+        "lines"                  => $lines
     ];
 }
 
-// Migrate Warehouse and Aisle
+// -----------------------------
+// MIGRATE WAREHOUSE + AISLE
+// -----------------------------
 $sql = "SELECT * FROM Warehouse";
 $result = $mysqli->query($sql);
 
-if ($result->num_rows > 0) {
+if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $warehouseID = $row["WarehouseID"];
         
@@ -103,24 +120,26 @@ if ($result->num_rows > 0) {
             $inventory = [];
             while ($inventoryRow = $inventoryResult->fetch_assoc()) {
                 $inventory[] = [
-                    "productID" => (string)$inventoryRow["ProductID"],
-                    "quantity" => (int)$inventoryRow["Quantity"]
+                    "productID" => (int)$inventoryRow["ProductID"],
+                    "quantity"  => (int)$inventoryRow["Quantity"]
                 ];
             }
             
             $aisles[] = transformAisleData($aisleRow, $inventory);
         }
         
-        $warehouse = transformWarehouseData($row, $aisles);
-        $mongoDb->Warehouse->insertOne($warehouse);
+        $warehouseDoc = transformWarehouseData($row, $aisles);
+        $mongoDb->Warehouse->insertOne($warehouseDoc);
     }
 }
 
-// Migrate SalesOrder and SalesOrderDetails
+// -----------------------------
+// MIGRATE SALES ORDER + DETAILS
+// -----------------------------
 $sql = "SELECT * FROM SalesOrder";
 $result = $mysqli->query($sql);
 
-if ($result->num_rows > 0) {
+if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $orderID = $row["OrderID"];
         
@@ -134,22 +153,24 @@ if ($result->num_rows > 0) {
         $details = [];
         while ($detailsRow = $detailsResult->fetch_assoc()) {
             $details[] = [
-                "productID" => (string)$detailsRow["ProductID"],
-                "quantity" => (int)$detailsRow["Quantity"],
-                "price" => (float)$detailsRow["Price"]
+                "productID" => (int)$detailsRow["ProductID"],
+                "quantity"  => (int)$detailsRow["Quantity"],
+                "price"     => (float)$detailsRow["Price"]
             ];
         }
         
-        $order = transformSalesOrderData($row, $details);
-        $mongoDb->SalesOrder->insertOne($order);
+        $orderDoc = transformSalesOrderData($row, $details);
+        $mongoDb->SalesOrder->insertOne($orderDoc);
     }
 }
 
-// Migrate TransferHeader and TransferLines
+// -----------------------------
+// MIGRATE TRANSFER HEADER + LINES
+// -----------------------------
 $sql = "SELECT * FROM TransferHeader";
 $result = $mysqli->query($sql);
 
-if ($result->num_rows > 0) {
+if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $transferID = $row["TransferID"];
         
@@ -162,35 +183,46 @@ if ($result->num_rows > 0) {
         
         $lines = [];
         while ($lineRow = $linesResult->fetch_assoc()) {
+            // IMPORTANT: Also store TransferID in each line doc so we can match them easily later in queries
             $lines[] = [
-                "productID" => (string)$lineRow["ProductID"],
-                "quantity" => (int)$lineRow["Quantity"]
+                "TransferID" => (string)$lineRow["TransferID"],  // or (string)$transferID, both are same
+                "productID"  => (int)$lineRow["ProductID"],
+                "quantity"   => (int)$lineRow["Quantity"]
             ];
         }
         
+        // Build the TransferHeader doc
         $transferHeader = transformTransferHeaderData($row, $lines);
         $mongoDb->TransferHeader->insertOne($transferHeader);
     }
 }
 
-// Migrate standalone collections (Vendor, Customer, Product)
+// -----------------------------
+// MIGRATE STANDALONE TABLES
+// -----------------------------
 $standaloneTables = ['Vendor', 'Customer', 'Product'];
 foreach ($standaloneTables as $table) {
     $sql = "SELECT * FROM $table";
     $result = $mysqli->query($sql);
 
-    if ($result->num_rows > 0) {
+    if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
+            if ($table === 'Product') {
+                // Convert ProductID to integer if it's not already
+                $row['ProductID'] = (int)$row['ProductID'];
+            }
+            // Insert with ProductID as an integer
             $mongoDb->$table->insertOne($row);
         }
     }
 }
 
+// Close MySQL
 $mysqli->close();
 
-// Set session variable to indicate migration to MongoDB
+// Indicate we are now using MongoDB
 $_SESSION['use_mongodb'] = true;
 
-// Redirect back to home.php with a success message
+// Redirect to home
 header("Location: home.php?message=Data%20migration%20completed%20successfully");
 exit;

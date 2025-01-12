@@ -1,34 +1,61 @@
 <?php
-// Database credentials
+session_start();
+
+// MongoDB Configuration
+require_once '/var/www/html/vendor/autoload.php';
+$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
+$mongoClient = new MongoDB\Client($mongoUri);
+$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+
+// MySQL Configuration
 $host = 'MySQLDockerContainer'; // MySQL container name
-$db = 'IMSE_MS2';               // Updated database name
+$db = 'IMSE_MS2';               // Database name
 $user = 'root';                 // MySQL username
 $pass = 'IMSEMS2';              // MySQL root password
+$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Create a new PDO connection
-    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass);
+    // Determine whether to use MongoDB or MySQL based on session
+    $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
-    // Set error mode to exceptions
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    if ($useMongoDb) {
+        // Fetch transfers from MongoDB
+        $transfers = $mongoDb->TransferHeader->find([], [
+            'sort' => ['_id' => 1],
+        ]);
 
-    // Fetch transfers with warehouse and aisle names, ordered by TransferID
-    $stmt = $pdo->prepare("
-        SELECT th.TransferID, th.TransferDate, 
-               ow.WarehouseName AS OriginWarehouseName, oa.AisleName AS OriginAisleName, 
-               dw.WarehouseName AS DestinationWarehouseName, da.AisleName AS DestinationAisleName
-          FROM TransferHeader th
-          JOIN Warehouse ow ON th.OriginWarehouseID = ow.WarehouseID
-          JOIN Aisle oa ON th.OriginAisle = oa.AisleNr AND th.OriginWarehouseID = oa.WarehouseID
-          JOIN Warehouse dw ON th.DestinationWarehouseID = dw.WarehouseID
-          JOIN Aisle da ON th.DestinationAisle = da.AisleNr AND th.DestinationWarehouseID = da.WarehouseID
-         ORDER BY th.TransferID
-    ");
-    $stmt->execute();
-    $transfers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // Display an error message if connection fails
+        $transferList = [];
+        foreach ($transfers as $transfer) {
+            $transferList[] = [
+                'TransferID' => $transfer['_id'],
+                'TransferDate' => $transfer['transferDate']->toDateTime()->format('Y-m-d'),
+                'OriginWarehouseName' => $transfer['originWarehouseID'],
+                'OriginAisleName' => $transfer['originAisle'],
+                'DestinationWarehouseName' => $transfer['destinationWarehouseID'],
+                'DestinationAisleName' => $transfer['destinationAisle'],
+            ];
+        }
+    } else {
+        // Use MySQL
+        $pdo = new PDO($dsn, $user, $pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // Fetch transfers with warehouse and aisle names, ordered by TransferID
+        $stmt = $pdo->prepare("
+            SELECT th.TransferID, th.TransferDate, 
+                   ow.WarehouseName AS OriginWarehouseName, oa.AisleName AS OriginAisleName, 
+                   dw.WarehouseName AS DestinationWarehouseName, da.AisleName AS DestinationAisleName
+              FROM TransferHeader th
+              JOIN Warehouse ow ON th.OriginWarehouseID = ow.WarehouseID
+              JOIN Aisle oa ON th.OriginAisle = oa.AisleNr AND th.OriginWarehouseID = oa.WarehouseID
+              JOIN Warehouse dw ON th.DestinationWarehouseID = dw.WarehouseID
+              JOIN Aisle da ON th.DestinationAisle = da.AisleNr AND th.DestinationWarehouseID = da.WarehouseID
+             ORDER BY th.TransferID
+        ");
+        $stmt->execute();
+        $transferList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (Exception $e) {
     echo "<p>Error: " . $e->getMessage() . "</p>";
     die();
 }
@@ -88,7 +115,6 @@ try {
         th {
             background-color: #0078D7; /* Vibrant Blue */
             color: white;
-            /* text-transform: uppercase; */
             font-weight: bold;
         }
         tr:nth-child(even) {
@@ -122,7 +148,7 @@ try {
         </a>
         <a href="insert_transfer_form.php" class="new-transfer-btn">+ New Transfer</a>
     </div>
-    <?php if (!empty($transfers)): ?>
+    <?php if (!empty($transferList)): ?>
         <table>
             <thead>
                 <tr>
@@ -135,7 +161,7 @@ try {
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($transfers as $transfer): ?>
+                <?php foreach ($transferList as $transfer): ?>
                     <tr>
                         <td>
                             <a href="view_transfer.php?TransferID=<?= htmlspecialchars($transfer['TransferID']) ?>">
@@ -143,17 +169,9 @@ try {
                             </a>
                         </td>
                         <td><?= htmlspecialchars($transfer['TransferDate']) ?></td>
-                        <td>
-                            <a href="view_warehouse.php?WarehouseName=<?= htmlspecialchars($transfer['OriginWarehouseName']) ?>">
-                                <?= htmlspecialchars($transfer['OriginWarehouseName']) ?>
-                            </a>
-                        </td>
+                        <td><?= htmlspecialchars($transfer['OriginWarehouseName']) ?></td>
                         <td><?= htmlspecialchars($transfer['OriginAisleName']) ?></td>
-                        <td>
-                            <a href="view_warehouse.php?WarehouseName=<?= htmlspecialchars($transfer['DestinationWarehouseName']) ?>">
-                                <?= htmlspecialchars($transfer['DestinationWarehouseName']) ?>
-                            </a>
-                        </td>
+                        <td><?= htmlspecialchars($transfer['DestinationWarehouseName']) ?></td>
                         <td><?= htmlspecialchars($transfer['DestinationAisleName']) ?></td>
                     </tr>
                 <?php endforeach; ?>

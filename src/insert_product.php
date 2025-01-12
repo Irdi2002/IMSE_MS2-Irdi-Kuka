@@ -1,17 +1,22 @@
 <?php
-// Database credentials
+session_start();
+
+// MongoDB Configuration
+require_once '/var/www/html/vendor/autoload.php';
+$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
+$mongoClient = new MongoDB\Client($mongoUri);
+$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+
+// MySQL Configuration
 $host = 'MySQLDockerContainer'; // MySQL container name
-$db = 'IMSE_MS2';               // Updated database name
+$db = 'IMSE_MS2';               // Database name
 $user = 'root';                 // MySQL username
 $pass = 'IMSEMS2';              // MySQL root password
+$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Create a new PDO connection
-    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass);
-
-    // Set error mode to exceptions
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    // Determine whether to use MongoDB or MySQL based on session
+    $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     // Handle form submission
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -22,28 +27,55 @@ try {
         $price = $_POST['price'] ?? null;
         $currency = $_POST['currency'] ?? null;
 
-        // Insert the new product into the database
-        $stmt = $pdo->prepare("
-            INSERT INTO Product (Name, Description, Weight, UnitOfMeasure, Price, Currency)
-            VALUES (:name, :description, :weight, :unit_of_measure, :price, :currency)
-        ");
-        $stmt->execute([
-            ':name' => $name,
-            ':description' => $description,
-            ':weight' => $weight,
-            ':unit_of_measure' => $unitOfMeasure,
-            ':price' => $price,
-            ':currency' => $currency
-        ]);
+        if ($useMongoDb) {
+            // Calculate the next ProductID
+            $lastProduct = $mongoDb->Product->findOne([], [
+                'sort' => ['ProductID' => -1], // Sort in descending order
+                'projection' => ['ProductID' => 1]
+            ]);
+        
+            // Ensure ProductID is treated as an integer
+            $lastProductID = isset($lastProduct['ProductID']) ? (int)$lastProduct['ProductID'] : 0;
+            $nextProductID = $lastProductID + 1;
+        
+            // Insert the new product into MongoDB with ProductID as an integer
+            $result = $mongoDb->Product->insertOne([
+                'ProductID' => $nextProductID, // No need for explicit type cast here as $nextProductID is already an integer
+                'Name' => $name,
+                'Description' => $description,
+                'Weight' => $weight,
+                'UnitOfMeasure' => $unitOfMeasure,
+                'Price' => $price,
+                'Currency' => $currency
+            ]);
+        
+            $productID = $nextProductID;
+        } else {
+            // Use MySQL to insert the product
+            $pdo = new PDO($dsn, $user, $pass);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Get the ID of the newly inserted product
-        $productID = $pdo->lastInsertId();
+            $stmt = $pdo->prepare(<<<SQL
+                INSERT INTO Product (Name, Description, Weight, UnitOfMeasure, Price, Currency)
+                VALUES (:name, :description, :weight, :unit_of_measure, :price, :currency)
+            SQL);
+            $stmt->execute([
+                ':name' => $name,
+                ':description' => $description,
+                ':weight' => $weight,
+                ':unit_of_measure' => $unitOfMeasure,
+                ':price' => $price,
+                ':currency' => $currency
+            ]);
+
+            $productID = $pdo->lastInsertId();
+        }
 
         // Redirect to the edit page with a success message
         header("Location: view_product.php?ProductID=$productID&message=Product%20inserted%20successfully!");
         exit;
     }
-} catch (PDOException $e) {
+} catch (Exception $e) {
     echo json_encode(['error' => $e->getMessage()]);
     exit;
 }

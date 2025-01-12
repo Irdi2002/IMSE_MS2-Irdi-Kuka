@@ -1,38 +1,73 @@
 <?php
-// Database credentials
-$host = 'MySQLDockerContainer'; // MySQL container name
-$db = 'IMSE_MS2';               // Updated database name
-$user = 'root';                 // MySQL username
-$pass = 'IMSEMS2';              // MySQL root password
+session_start();
 
-try {
-    // Create a new PDO connection
-    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+// Check if connected to MongoDB
+$useMongoDB = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'];
+
+if ($useMongoDB) {
+    require_once '/var/www/html/vendor/autoload.php';
+
+    // MongoDB Configuration
+    $uri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
+    $mongoClient = new MongoDB\Client($uri);
+    $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
     // Fetch the product by ProductID
-    $productID = $_GET['ProductID'] ?? null;
+    $productID = (int)($_GET['ProductID'] ?? null);
     $message = $_GET['message'] ?? null; // Get the success message if available
 
-    if (!$productID) {
-        echo "<p>Error: ProductID not provided.</p>";
+    if ($productID === null || $productID === '') {
+        echo "<p>Error: Invalid ProductID provided.</p>";
         exit;
     }
 
-    // Fetch product data
-    $stmt = $pdo->prepare("SELECT * FROM Product WHERE ProductID = :ProductID");
-    $stmt->execute([':ProductID' => $productID]);
-    $product = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Fetch product data from MongoDB
+    try {
+        $product = $mongoDb->Product->findOne(['ProductID' => $productID]);
 
-    if (!$product) {
-        echo "<p>Error: Product not found.</p>";
+        if (!$product) {
+            echo "<p>Error: Product not found. ProductID: " . htmlspecialchars($productID) . "</p>";
+            exit;
+        }
+    } catch (MongoDB\Driver\Exception\Exception $e) {
+        echo "MongoDB Connection Error: " . $e->getMessage();
         exit;
     }
+} else {
+    // Database credentials
+    $host = 'MySQLDockerContainer'; // MySQL container name
+    $db = 'IMSE_MS2';               // Updated database name
+    $user = 'root';                 // MySQL username
+    $pass = 'IMSEMS2';              // MySQL root password
 
-} catch (PDOException $e) {
-    echo "<p>Error: " . $e->getMessage() . "</p>";
-    die();
+    try {
+        // Create a new PDO connection
+        $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+        $pdo = new PDO($dsn, $user, $pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // Fetch the product by ProductID
+        $productID = (int)($_GET['ProductID'] ?? null);
+        $message = $_GET['message'] ?? null; // Get the success message if available
+
+        if ($productID === null || $productID === '') {
+            echo "<p>Error: Invalid ProductID provided.</p>";
+            exit;
+        }
+
+        // Fetch product data from MySQL
+        $stmt = $pdo->prepare("SELECT * FROM Product WHERE ProductID = :ProductID");
+        $stmt->execute([':ProductID' => $productID]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$product) {
+            echo "<p>Error: Product not found. ProductID: " . htmlspecialchars($productID) . "</p>";
+            exit;
+        }
+    } catch (PDOException $e) {
+        echo "<p>Error: " . $e->getMessage() . "</p>";
+        die();
+    }
 }
 ?>
 
