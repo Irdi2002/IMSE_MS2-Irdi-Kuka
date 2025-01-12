@@ -15,8 +15,7 @@ if (isset($_GET['warehouse_id']) && isset($_GET['aisle_nr'])) {
             $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
             // Fetch the warehouse to get the specific aisle
-            $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => $warehouseID]);
-
+            $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => (int)$warehouseID]);
             if (!$warehouse) {
                 echo json_encode(['error' => 'Warehouse not found']);
                 exit;
@@ -24,7 +23,7 @@ if (isset($_GET['warehouse_id']) && isset($_GET['aisle_nr'])) {
 
             $targetAisle = null;
             foreach ($warehouse['aisles'] as $aisle) {
-                if ($aisle['aisleNr'] == $aisleNr) {
+                if ($aisle['AisleNr'] == (int)$aisleNr) {
                     $targetAisle = $aisle;
                     break;
                 }
@@ -37,10 +36,10 @@ if (isset($_GET['warehouse_id']) && isset($_GET['aisle_nr'])) {
 
             $productList = [];
             foreach ($targetAisle['inventory'] as $item) {
-                $product = $mongoDb->Product->findOne(['ProductID' => (int)$item['productID']]);
+                $product = $mongoDb->Product->findOne(['ProductID' => (int)$item['ProductID']]);
                 if ($product) {
                     $productList[] = [
-                        'ProductID' => $item['productID'],
+                        'ProductID' => $item['ProductID'],
                         'Name' => $product['Name'],
                         'Quantity' => $item['quantity']
                     ];

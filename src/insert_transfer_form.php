@@ -91,104 +91,107 @@ $pass = 'IMSEMS2';
         }
     </style>
     <script>
-        function updateDropdowns() {
-            const originSelect = document.getElementById('origin_warehouse');
-            const destinationSelect = document.getElementById('destination_warehouse');
-            const selectedOrigin = originSelect.value;
+    function updateDropdowns() {
+        const originSelect = document.getElementById('origin_warehouse');
+        const destinationSelect = document.getElementById('destination_warehouse');
+        const selectedOrigin = originSelect.value;
 
-            Array.from(destinationSelect.options).forEach(option => {
-                option.disabled = option.value === selectedOrigin;
-            });
+        Array.from(destinationSelect.options).forEach(option => {
+            option.disabled = option.value === selectedOrigin;
+        });
 
-            const selectedDestination = destinationSelect.value;
+        const selectedDestination = destinationSelect.value;
 
-            Array.from(originSelect.options).forEach(option => {
-                option.disabled = option.value === selectedDestination;
-            });
+        Array.from(originSelect.options).forEach(option => {
+            option.disabled = option.value === selectedDestination;
+        });
 
-            updateAisleDropdowns('origin_warehouse', 'origin_aisle');
-            updateAisleDropdowns('destination_warehouse', 'destination_aisle');
-        }
+        updateAisleDropdowns('origin_warehouse', 'origin_aisle');
+        updateAisleDropdowns('destination_warehouse', 'destination_aisle');
+    }
 
-        function updateAisleDropdowns(warehouseSelectId, aisleSelectId) {
-            const warehouseSelect = document.getElementById(warehouseSelectId);
-            const aisleSelect = document.getElementById(aisleSelectId);
-            const warehouseID = warehouseSelect.value; // Ensure this matches your MongoDB _id format
+    function updateAisleDropdowns(warehouseSelectId, aisleSelectId) {
+        const warehouseSelect = document.getElementById(warehouseSelectId);
+        const aisleSelect = document.getElementById(aisleSelectId);
+        const warehouseID = warehouseSelect.value;
+        console.log('Selected Warehouse ID:', warehouseID);
 
-            fetch(`get_aisles.php?warehouse_id=${warehouseID}&useMongoDB=<?php echo $useMongoDB ? 'true' : 'false'; ?>`)
+        fetch(`get_aisles.php?warehouse_id=${warehouseID}&useMongoDB=<?php echo $useMongoDB ? 'true' : 'false'; ?>`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error(data.error);
+                } else {
+                    aisleSelect.innerHTML = '<option value="">Select Aisle</option>';
+                    data.forEach(aisle => {
+                        const option = document.createElement('option');
+                        option.value = aisle.AisleNr;
+                        option.textContent = `${aisle.AisleNr} - ${aisle.AisleName}`;
+                        aisleSelect.appendChild(option);
+                    });
+                    updateProductDropdowns();
+                }
+            })
+            .catch(error => console.error('Error fetching aisles:', error));
+    }
+
+    function updateProductDropdowns() {
+        const originWarehouseSelect = document.getElementById('origin_warehouse');
+        const originAisleSelect = document.getElementById('origin_aisle');
+        const originWarehouseID = originWarehouseSelect.value;
+        const originAisleNr = originAisleSelect.value;
+        console.log('Selected originWarehouseID:', originWarehouseID);
+        console.log('Selected originAisleNr:', originAisleNr);
+
+        if (originWarehouseID && originAisleNr) {
+            fetch(`get_products.php?warehouse_id=${originWarehouseID}&aisle_nr=${originAisleNr}&useMongoDB=<?php echo $useMongoDB ? 'true' : 'false'; ?>`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
-                        console.error(data.error);
-                    } else {
-                        aisleSelect.innerHTML = '<option value="">Select Aisle</option>';
-                        data.forEach(aisle => {
-                            const option = document.createElement('option');
-                            option.value = aisle.AisleNr;
-                            option.textContent = `${aisle.AisleNr} - ${aisle.AisleName}`;
-                            aisleSelect.appendChild(option);
-                        });
-                        updateProductDropdowns();
+                        console.error('Error:', data.error);
+                        return;
                     }
-                })
-                .catch(error => console.error('Error fetching aisles:', error));
-        }
-
-        function updateProductDropdowns() {
-            const originWarehouseSelect = document.getElementById('origin_warehouse');
-            const originAisleSelect = document.getElementById('origin_aisle');
-            const originWarehouseID = originWarehouseSelect.value;
-            const originAisleNr = originAisleSelect.value;
-
-            if (originWarehouseID && originAisleNr) {
-                fetch(`get_products.php?warehouse_id=${originWarehouseID}&aisle_nr=${originAisleNr}&useMongoDB=<?php echo $useMongoDB ? 'true' : 'false'; ?>`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            console.error('Error:', data.error);
-                            return;
-                        }
-                        const productSelects = document.querySelectorAll('select[name="product_id[]"]');
-                        productSelects.forEach(select => {
-                            const selectedProduct = select.value;
-                            select.innerHTML = '<option value="">Select Product</option>';
-                            data.forEach(product => {
-                                const option = document.createElement('option');
-                                option.value = product.ProductID;
-                                option.textContent = `${product.ProductID} - ${product.Name} (${product.Quantity})`;
-                                if (product.ProductID == selectedProduct) {
-                                    option.selected = true;
-                                }
-                                select.appendChild(option);
-                            });
+                    const productSelects = document.querySelectorAll('select[name="product_id[]"]');
+                    productSelects.forEach(select => {
+                        const selectedProduct = select.value;
+                        select.innerHTML = '<option value="">Select Product</option>';
+                        data.forEach(product => {
+                            const option = document.createElement('option');
+                            option.value = product.ProductID;
+                            option.textContent = `${product.ProductID} - ${product.Name} (${product.Quantity})`;
+                            if (product.ProductID == selectedProduct) {
+                                option.selected = true;
+                            }
+                            select.appendChild(option);
                         });
-                    })
-                    .catch(error => console.error('Error fetching products:', error));
-            }
+                    });
+                })
+                .catch(error => console.error('Error fetching products:', error));
         }
+    }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('origin_aisle').addEventListener('change', updateProductDropdowns);
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('origin_aisle').addEventListener('change', updateProductDropdowns);
 
-            document.getElementById('add-line').addEventListener('click', function () {
-                const transferLinesContainer = document.getElementById('transfer-lines');
-                const lineFields = `
-                    <div class="product-line">
-                        <label for="product_id">Product:</label>
-                        <select name="product_id[]" required>
-                            <option value="">Select Product</option>
-                        </select>
-                        <label for="quantity">Quantity:</label>
-                        <input type="number" name="quantity[]" placeholder="Enter Quantity" min="1" required>
-                    </div>
-                `;
-                transferLinesContainer.insertAdjacentHTML('beforeend', lineFields);
-                updateProductDropdowns();
-            });
-
-            updateDropdowns();
+        document.getElementById('add-line').addEventListener('click', function () {
+            const transferLinesContainer = document.getElementById('transfer-lines');
+            const lineFields = `
+                <div class="product-line">
+                    <label for="product_id">Product:</label>
+                    <select name="product_id[]" required>
+                        <option value="">Select Product</option>
+                    </select>
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" name="quantity[]" placeholder="Enter Quantity" min="1" required>
+                </div>
+            `;
+            transferLinesContainer.insertAdjacentHTML('beforeend', lineFields);
+            updateProductDropdowns();
         });
-    </script>
+
+        updateDropdowns();
+    });
+</script>
 </head>
 <body>
     <h1>New Transfer</h1>
@@ -212,7 +215,7 @@ $pass = 'IMSEMS2';
             if ($useMongoDB) {
                 $warehouses = $mongoDb->Warehouse->find();
                 foreach ($warehouses as $warehouse) {
-                    echo "<option value='" . htmlspecialchars($warehouse['_id']) . "'>" . htmlspecialchars($warehouse['name']) . "</option>";
+                    echo "<option value='" . htmlspecialchars($warehouse['warehouseID']) . "'>" . htmlspecialchars($warehouse['name']) . "</option>";
                 }
             } else {
                 try {
@@ -240,7 +243,7 @@ $pass = 'IMSEMS2';
             if ($useMongoDB) {
                 $warehouses = $mongoDb->Warehouse->find();
                 foreach ($warehouses as $warehouse) {
-                    echo "<option value='" . htmlspecialchars($warehouse['_id']) . "'>" . htmlspecialchars($warehouse['name']) . "</option>";
+                    echo "<option value='" . htmlspecialchars($warehouse['warehouseID']) . "'>" . htmlspecialchars($warehouse['name']) . "</option>";
                 }
             } else {
                 try {

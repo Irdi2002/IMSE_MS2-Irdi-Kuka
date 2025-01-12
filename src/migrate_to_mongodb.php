@@ -52,8 +52,8 @@ function transformWarehouseData($warehouseRow, $aisles) {
  */
 function transformAisleData($aisleRow, $inventory) {
     return [
-        "aisleNr"         => (int)$aisleRow["AisleNr"],
-        "name"            => $aisleRow["AisleName"],
+        "AisleNr"         => (int)$aisleRow["AisleNr"],
+        "Name"            => $aisleRow["AisleName"],
         "fireExtinguisher"=> (bool)$aisleRow["FireExtingusher"],
         "description"     => $aisleRow["Description"],
         "inventory"       => $inventory
@@ -120,7 +120,7 @@ if ($result && $result->num_rows > 0) {
             $inventory = [];
             while ($inventoryRow = $inventoryResult->fetch_assoc()) {
                 $inventory[] = [
-                    "productID" => (int)$inventoryRow["ProductID"],
+                    "ProductID" => (int)$inventoryRow["ProductID"],
                     "quantity"  => (int)$inventoryRow["Quantity"]
                 ];
             }
@@ -186,7 +186,7 @@ if ($result && $result->num_rows > 0) {
             // IMPORTANT: Also store TransferID in each line doc so we can match them easily later in queries
             $lines[] = [
                 "TransferID" => (int)$lineRow["TransferID"],  // or (string)$transferID, both are same
-                "productID"  => (int)$lineRow["ProductID"],
+                "ProductID"  => (int)$lineRow["ProductID"],
                 "quantity"   => (int)$lineRow["Quantity"]
             ];
         }
