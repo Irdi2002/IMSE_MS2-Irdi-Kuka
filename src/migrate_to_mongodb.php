@@ -39,7 +39,7 @@ if ($mysqli->connect_error) {
  */
 function transformWarehouseData($warehouseRow, $aisles) {
     return [
-        "_id"     => (string)$warehouseRow["WarehouseID"],
+        "warehouseID"     => (int)$warehouseRow["WarehouseID"],
         "name"    => $warehouseRow["WarehouseName"],
         "address" => $warehouseRow["Address"],
         "category"=> $warehouseRow["Category"],
@@ -52,7 +52,7 @@ function transformWarehouseData($warehouseRow, $aisles) {
  */
 function transformAisleData($aisleRow, $inventory) {
     return [
-        "aisleNr"         => (string)$aisleRow["AisleNr"],
+        "aisleNr"         => (int)$aisleRow["AisleNr"],
         "name"            => $aisleRow["AisleName"],
         "fireExtinguisher"=> (bool)$aisleRow["FireExtingusher"],
         "description"     => $aisleRow["Description"],
@@ -77,12 +77,12 @@ function transformSalesOrderData($orderRow, $details) {
  */
 function transformTransferHeaderData($headerRow, $lines) {
     return [
-        "_id"                    => (string)$headerRow["TransferID"],
-        "originWarehouseID"      => (string)$headerRow["OriginWarehouseID"],
-        "destinationWarehouseID" => (string)$headerRow["DestinationWarehouseID"],
+        "TransferID"                    => (int)$headerRow["TransferID"],
+        "originWarehouseID"      => (int)$headerRow["OriginWarehouseID"],
+        "destinationWarehouseID" => (int)$headerRow["DestinationWarehouseID"],
         // Store the aisle numbers so we can later query them
-        "originAisle"            => (string)$headerRow["OriginAisle"],
-        "destinationAisle"       => (string)$headerRow["DestinationAisle"],
+        "originAisle"            => (int)$headerRow["OriginAisle"],
+        "destinationAisle"       => (int)$headerRow["DestinationAisle"],
         // Convert TransferDate to MongoDB UTCDateTime
         "transferDate"           => new MongoDB\BSON\UTCDateTime(strtotime($headerRow["TransferDate"]) * 1000),
         "lines"                  => $lines
@@ -185,7 +185,7 @@ if ($result && $result->num_rows > 0) {
         while ($lineRow = $linesResult->fetch_assoc()) {
             // IMPORTANT: Also store TransferID in each line doc so we can match them easily later in queries
             $lines[] = [
-                "TransferID" => (string)$lineRow["TransferID"],  // or (string)$transferID, both are same
+                "TransferID" => (int)$lineRow["TransferID"],  // or (string)$transferID, both are same
                 "productID"  => (int)$lineRow["ProductID"],
                 "quantity"   => (int)$lineRow["Quantity"]
             ];

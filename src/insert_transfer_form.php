@@ -144,6 +144,10 @@ $pass = 'IMSEMS2';
                 fetch(`get_products.php?warehouse_id=${originWarehouseID}&aisle_nr=${originAisleNr}&useMongoDB=<?php echo $useMongoDB ? 'true' : 'false'; ?>`)
                     .then(response => response.json())
                     .then(data => {
+                        if (data.error) {
+                            console.error('Error:', data.error);
+                            return;
+                        }
                         const productSelects = document.querySelectorAll('select[name="product_id[]"]');
                         productSelects.forEach(select => {
                             const selectedProduct = select.value;
@@ -151,7 +155,7 @@ $pass = 'IMSEMS2';
                             data.forEach(product => {
                                 const option = document.createElement('option');
                                 option.value = product.ProductID;
-                                option.textContent = `${product.ProductID} - ${product.Name} - ${product.Quantity}`;
+                                option.textContent = `${product.ProductID} - ${product.Name} (${product.Quantity})`;
                                 if (product.ProductID == selectedProduct) {
                                     option.selected = true;
                                 }

@@ -21,13 +21,13 @@ try {
     if ($useMongoDb) {
         // Fetch transfers from MongoDB
         $transfers = $mongoDb->TransferHeader->find([], [
-            'sort' => ['_id' => 1],
+            'sort' => ['TransferID' => 1],
         ]);
 
         $transferList = [];
         foreach ($transfers as $transfer) {
             $transferList[] = [
-                'TransferID' => $transfer['_id'],
+                'TransferID' => $transfer['TransferID'],
                 'TransferDate' => $transfer['transferDate']->toDateTime()->format('Y-m-d'),
                 'OriginWarehouseName' => $transfer['originWarehouseID'],
                 'OriginAisleName' => $transfer['originAisle'],

@@ -1,11 +1,6 @@
 <?php
 require_once '/var/www/html/vendor/autoload.php';
 
-$host = 'MySQLDockerContainer';
-$db = 'IMSE_MS2';
-$user = 'root';
-$pass = 'IMSEMS2';
-
 header('Content-Type: application/json');
 
 if (isset($_GET['warehouse_id']) && isset($_GET['aisle_nr'])) {
@@ -20,7 +15,7 @@ if (isset($_GET['warehouse_id']) && isset($_GET['aisle_nr'])) {
             $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
             // Fetch the warehouse to get the specific aisle
-            $warehouse = $mongoDb->Warehouse->findOne(['_id' => $warehouseID]);
+            $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => $warehouseID]);
 
             if (!$warehouse) {
                 echo json_encode(['error' => 'Warehouse not found']);
@@ -57,6 +52,12 @@ if (isset($_GET['warehouse_id']) && isset($_GET['aisle_nr'])) {
             echo json_encode(['error' => $e->getMessage()]);
         }
     } else {
+        // MySQL Implementation:
+        $host = 'MySQLDockerContainer';
+        $db = 'IMSE_MS2';
+        $user = 'root';
+        $pass = 'IMSEMS2';
+
         try {
             $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
             $stmt = $pdo->prepare("

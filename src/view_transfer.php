@@ -23,10 +23,10 @@ try {
             throw new Exception("TransferID not provided.");
         }
 
-        $transferID = $_GET['TransferID'];
+        $transferID = (int)$_GET['TransferID'];
 
         // Fetch transfer header from MongoDB
-        $transfer = $mongoDb->TransferHeader->findOne(["_id" => $transferID]);
+        $transfer = $mongoDb->TransferHeader->findOne(["TransferID" => $transferID]);
 
         if (!$transfer) {
             throw new Exception("Transfer not found.");

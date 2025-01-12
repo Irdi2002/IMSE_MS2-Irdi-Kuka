@@ -9,7 +9,7 @@ $pass = 'IMSEMS2';
 header('Content-Type: application/json');
 
 if (isset($_GET['warehouse_id'])) {
-    $warehouseID = $_GET['warehouse_id'];
+    $warehouseID = (int)$_GET['warehouse_id'];
     $useMongoDB = isset($_GET['useMongoDB']) && $_GET['useMongoDB'] === 'true';
 
     if ($useMongoDB) {
@@ -19,18 +19,19 @@ if (isset($_GET['warehouse_id'])) {
             $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
             // Fetch the warehouse to get aisles
-            $warehouse = $mongoDb->Warehouse->findOne(['_id' => $warehouseID]);
+            $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => $warehouseID]);
 
             if (!$warehouse) {
                 echo json_encode(['error' => 'Warehouse not found']);
                 exit;
             }
 
+            // Ensure 'aisles' exists in the warehouse document
             $aisleList = [];
             foreach ($warehouse['aisles'] as $aisle) {
                 $aisleList[] = [
-                    'AisleNr' => $aisle['aisleNr'],
-                    'AisleName' => $aisle['name']
+                    'AisleNr' => $aisle['aisleNr'], // Use correct casing
+                    'AisleName' => $aisle['name']   // Use correct casing
                 ];
             }
 
