@@ -22,7 +22,6 @@ $mongoDb->Customer->drop();
 $mongoDb->Product->drop();
 $mongoDb->PurchaseOrder->drop();
 $mongoDb->SalesOrder->drop();
-$mongoDb->SalesOrderDetails->drop();
 $mongoDb->TransferHeader->drop();
 $mongoDb->TransferLines->drop();
 $mongoDb->WarehouseInventory->drop();
@@ -130,37 +129,6 @@ if ($result && $result->num_rows > 0) {
         
         $warehouseDoc = transformWarehouseData($row, $aisles);
         $mongoDb->Warehouse->insertOne($warehouseDoc);
-    }
-}
-
-// -----------------------------
-// MIGRATE SALES ORDER + DETAILS
-// -----------------------------
-$sql = "SELECT * FROM SalesOrder";
-$result = $mysqli->query($sql);
-
-if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $orderID = $row["OrderID"];
-        
-        // Fetch Order Details
-        $detailsSql = "SELECT * FROM SalesOrderDetails WHERE OrderID = ?";
-        $detailsStmt = $mysqli->prepare($detailsSql);
-        $detailsStmt->bind_param("s", $orderID);
-        $detailsStmt->execute();
-        $detailsResult = $detailsStmt->get_result();
-        
-        $details = [];
-        while ($detailsRow = $detailsResult->fetch_assoc()) {
-            $details[] = [
-                "productID" => (int)$detailsRow["ProductID"],
-                "quantity"  => (int)$detailsRow["Quantity"],
-                "price"     => (float)$detailsRow["Price"]
-            ];
-        }
-        
-        $orderDoc = transformSalesOrderData($row, $details);
-        $mongoDb->SalesOrder->insertOne($orderDoc);
     }
 }
 

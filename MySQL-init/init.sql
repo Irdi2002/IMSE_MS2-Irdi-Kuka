@@ -5,7 +5,6 @@
 DROP TABLE IF EXISTS `WarehouseInventory`;
 DROP TABLE IF EXISTS `TransferLines`;
 DROP TABLE IF EXISTS `TransferHeader`;
-DROP TABLE IF EXISTS `SalesOrderDetails`;
 DROP TABLE IF EXISTS `SalesOrder`;
 DROP TABLE IF EXISTS `PurchaseOrder`;
 DROP TABLE IF EXISTS `Aisle`;
@@ -129,22 +128,6 @@ CREATE TABLE `SalesOrder` (
   KEY `CustID` (`CustID`),
   CONSTRAINT `SalesOrder_ibfk_1`
     FOREIGN KEY (`CustID`) REFERENCES `Customer` (`CustID`)
-) ENGINE=InnoDB 
-  DEFAULT CHARSET=utf8mb4 
-  COLLATE=utf8mb4_0900_ai_ci;
-
--- 2.8) SalesOrderDetails (references SalesOrder & Product)
-CREATE TABLE `SalesOrderDetails` (
-  `OrderID` varchar(20) NOT NULL,
-  `ProductID` int NOT NULL,
-  `Quantity` int DEFAULT NULL,
-  `Price` decimal(10,2) DEFAULT NULL,
-  PRIMARY KEY (`OrderID`,`ProductID`),
-  KEY `ProductID` (`ProductID`),
-  CONSTRAINT `SalesOrderDetails_ibfk_1`
-    FOREIGN KEY (`OrderID`) REFERENCES `SalesOrder` (`OrderID`),
-  CONSTRAINT `SalesOrderDetails_ibfk_2`
-    FOREIGN KEY (`ProductID`) REFERENCES `Product` (`ProductID`)
 ) ENGINE=InnoDB 
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;

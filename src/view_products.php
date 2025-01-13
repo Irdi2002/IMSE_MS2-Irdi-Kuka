@@ -23,9 +23,6 @@ try {
 
         if ($useMongoDb) {
             try {
-                // Delete product references in related collections
-                $mongoDb->SalesOrderDetails->deleteMany(['productID' => $deleteID]);
-
                 // Delete the product itself
                 $mongoDb->Product->deleteOne(['_id' => $deleteID]);
 
@@ -38,10 +35,6 @@ try {
             try {
                 $pdo = new PDO($dsn, $user, $pass);
                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-                // Delete product references in related tables
-                $deleteDetailsStmt = $pdo->prepare("DELETE FROM SalesOrderDetails WHERE ProductID = :ProductID");
-                $deleteDetailsStmt->execute([':ProductID' => $deleteID]);
 
                 // Delete the product itself
                 $deleteStmt = $pdo->prepare("DELETE FROM Product WHERE ProductID = :ProductID");

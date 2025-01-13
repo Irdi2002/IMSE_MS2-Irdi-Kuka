@@ -189,31 +189,6 @@ for ($i = 1; $i <= $numSalesOrders; $i++) {
 }
 
 // --------------------------------------------------
-// 9) Insert into SalesOrderDetails (Composite PK = OrderID + ProductID)
-// --------------------------------------------------
-$numSalesOrderDetails = 50; // Create 50 details
-$usedSOD = []; // Track used "OrderID-ProductID" pairs
-
-for ($i = 0; $i < $numSalesOrderDetails; $i++) {
-    do {
-        $orderID  = $faker->randomElement($salesOrderIDs);
-        $prodID   = $faker->randomElement($productIDs);
-        $pairKey  = $orderID . '-' . $prodID;
-    } while (in_array($pairKey, $usedSOD, true));
-
-    $usedSOD[] = $pairKey;
-
-    $quantity = $faker->numberBetween(1, 50);
-    $price    = $faker->randomFloat(2, 5, 200);
-
-    $stmt = $pdo->prepare("
-        INSERT IGNORE INTO SalesOrderDetails (OrderID, ProductID, Quantity, Price)
-        VALUES (?, ?, ?, ?)
-    ");
-    $stmt->execute([$orderID, $prodID, $quantity, $price]);
-}
-
-// --------------------------------------------------
 // 10) Insert into TransferHeader (AUTO_INCREMENT PK)
 // --------------------------------------------------
 $numTransfers = 50; // Create 50 transfers
