@@ -28,6 +28,16 @@ try {
         $fireExtinguishers = $_POST['fire_extinguisher'] ?? [];
 
         if ($useMongoDb) {
+            // Debug logging
+            error_log("Inserting warehouse into MongoDB:");
+            error_log("Warehouse Name: " . $warehouseName);
+            error_log("Address: " . $address);
+            error_log("Category: " . $category);
+            error_log("Number of aisles: " . count($aisleNames));
+            error_log("Aisle Names: " . print_r($aisleNames, true));
+            error_log("Aisle Descriptions: " . print_r($aisleDescriptions, true));
+            error_log("Fire Extinguishers: " . print_r($fireExtinguishers, true));
+
             // Get the next warehouse ID
             $lastWarehouse = $mongoDb->Warehouse->findOne(
                 [],
@@ -41,23 +51,31 @@ try {
             // Prepare aisles array
             $aisles = [];
             for ($i = 0; $i < count($aisleNames); $i++) {
-                $aisles[] = [
-                    'AisleNr' => $i + 1,
-                    'Name' => $aisleNames[$i],
-                    'description' => $aisleDescriptions[$i] ?? '',
-                    'fireExtinguisher' => isset($fireExtinguishers[$i]),
-                    'inventory' => []
-                ];
+                if (!empty($aisleNames[$i])) {  // Only add aisle if name is not empty
+                    $aisle = [
+                        'AisleNr' => $i + 1,
+                        'Name' => $aisleNames[$i],
+                        'fireExtinguisher' => in_array($i, array_keys($fireExtinguishers ?? [])),
+                        'description' => $aisleDescriptions[$i] ?? '',
+                        'inventory' => []
+                    ];
+                    $aisles[] = $aisle;
+                    error_log("Adding aisle: " . print_r($aisle, true));
+                }
             }
 
             // Insert warehouse with aisles
-            $mongoDb->Warehouse->insertOne([
+            $warehouse = [
                 'warehouseID' => $nextWarehouseId,
                 'name' => $warehouseName,
                 'address' => $address,
                 'category' => $category,
                 'aisles' => $aisles
-            ]);
+            ];
+            error_log("Final warehouse document: " . print_r($warehouse, true));
+            
+            $result = $mongoDb->Warehouse->insertOne($warehouse);
+            error_log("Insert result: " . print_r($result->getInsertedId(), true));
 
             echo "<p style='color:green;'>New warehouse and aisles added successfully</p>";
         } else {
@@ -215,7 +233,7 @@ try {
                     </div>
                     <div class="form-group fire-extinguisher-container">
                         <label>
-                            <input type="checkbox" name="fire_extinguisher[]" value="1"> Fire Extinguisher Available
+                            <input type="checkbox" name="fire_extinguisher[]"> Fire Extinguisher Available
                         </label>
                     </div>
                 </div>
@@ -253,6 +271,7 @@ try {
             <button type="button" class="add-aisle-btn" onclick="addAisleRow()">+ Add Aisle</button>
         </h2>
         <div id="aisles-container">
+            <!-- Initial aisle row -->
             <div class="aisle-container">
                 <div class="form-group">
                     <label for="aisle_name">Aisle Name:</label>
@@ -264,7 +283,7 @@ try {
                 </div>
                 <div class="form-group fire-extinguisher-container">
                     <label>
-                        <input type="checkbox" name="fire_extinguisher[]" value="1"> Fire Extinguisher Available
+                        <input type="checkbox" name="fire_extinguisher[]"> Fire Extinguisher Available
                     </label>
                 </div>
             </div>

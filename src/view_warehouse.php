@@ -48,28 +48,45 @@ try {
         $aisles = [];
         if (isset($warehouse['aisles'])) {
             foreach ($warehouse['aisles'] as $aisle) {
-                if (empty($aisle['inventory'])) {
-                    // Add aisle with no products
+                error_log("Processing aisle: " . json_encode($aisle));
+                
+                // Check if inventory exists and has at least one item
+                if (!empty($aisle['inventory']) && isset($aisle['inventory'][0])) {
+                    error_log("Aisle has inventory: " . json_encode($aisle['inventory']));
+                    // For aisles with inventory, show the first product
+                    $item = $aisle['inventory'][0];
+                    if (isset($item['ProductID'])) {
+                        error_log("Found product ID: " . $item['ProductID']);
+                        $product = $mongoDb->Product->findOne(
+                            ['ProductID' => (int)$item['ProductID']]
+                        );
+                        error_log("Found product: " . json_encode($product));
+                        
+                        $aisles[] = [
+                            'AisleNr' => $aisle['AisleNr'],
+                            'AisleName' => $aisle['Name'],
+                            'ProductName' => $product ? $product['Name'] : 'Unknown Product',
+                            'Quantity' => isset($item['quantity']) ? (int)$item['quantity'] : 0
+                        ];
+                    } else {
+                        error_log("No ProductID in inventory item");
+                        // Invalid inventory item
+                        $aisles[] = [
+                            'AisleNr' => $aisle['AisleNr'],
+                            'AisleName' => $aisle['Name'],
+                            'ProductName' => 'No Product',
+                            'Quantity' => 0
+                        ];
+                    }
+                } else {
+                    error_log("No inventory for aisle");
+                    // For aisles without inventory
                     $aisles[] = [
                         'AisleNr' => $aisle['AisleNr'],
                         'AisleName' => $aisle['Name'],
                         'ProductName' => 'No Product',
                         'Quantity' => 0
                     ];
-                } else {
-                    // Add entries for each product in inventory
-                    foreach ($aisle['inventory'] as $item) {
-                        $product = $mongoDb->Product->findOne(
-                            ['ProductID' => (int)$item['ProductID']]
-                        );
-                        
-                        $aisles[] = [
-                            'AisleNr' => $aisle['AisleNr'],
-                            'AisleName' => $aisle['Name'],
-                            'ProductName' => $product ? $product['Name'] : 'Unknown Product',
-                            'Quantity' => (int)$item['quantity']
-                        ];
-                    }
                 }
             }
         }
