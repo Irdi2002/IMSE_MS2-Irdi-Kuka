@@ -73,13 +73,19 @@ try {
         $lines = $transfer['lines'];
 
         // Fetch product names for the lines
-        foreach ($lines as &$line) {
+        $formattedLines = [];
+        foreach ($lines as $line) {
             $product = $mongoDb->Product->findOne(
-                ['ProductID' => $line['ProductID']], 
+                ['ProductID' => (int)$line['ProductID']], 
                 ['projection' => ['Name' => 1]]
             );
-            $line['ProductName'] = $product['Name'] ?? 'Unknown Product';
+            $formattedLines[] = [
+                'ProductID' => $line['ProductID'],
+                'ProductName' => $product['Name'] ?? 'Unknown Product',
+                'Quantity' => $line['quantity']
+            ];
         }
+        $lines = $formattedLines;
     } else {
         // Use MySQL
         $pdo = new PDO($dsn, $user, $pass);

@@ -28,7 +28,7 @@ try {
 
     if ($useMongoDb) {
         // Find the warehouse in MongoDB using warehouseID
-        $warehouseId = (int)$warehouseName; // The URL parameter contains the warehouseID for MongoDB
+        $warehouseId = (int)$warehouseName; // The URL parameter contains the warehouseID
         $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => $warehouseId]);
         
         if (!$warehouse) {
@@ -36,7 +36,6 @@ try {
         }
 
         error_log("Found warehouse: " . json_encode($warehouse));
-        error_log("Aisles in warehouse: " . json_encode($warehouse['aisles'] ?? []));
 
         // Format warehouse data to match MySQL structure
         $formattedWarehouse = [
@@ -47,46 +46,32 @@ try {
 
         // Prepare aisles data with inventory
         $aisles = [];
-        if (isset($warehouse) && isset($warehouse['aisles']) && is_array($warehouse['aisles'])) {
-            error_log("Processing " . count($warehouse['aisles']) . " aisles");
+        if (isset($warehouse['aisles'])) {
             foreach ($warehouse['aisles'] as $aisle) {
-                error_log("Processing aisle: " . json_encode($aisle));
-        
-                if (!isset($aisle['inventory']) || !is_array($aisle['inventory']) || empty($aisle['inventory'])) {
+                if (empty($aisle['inventory'])) {
                     // Add aisle with no products
                     $aisles[] = [
-                        'AisleNr' => (int)$aisle['AisleNr'],
+                        'AisleNr' => $aisle['AisleNr'],
                         'AisleName' => $aisle['Name'],
                         'ProductName' => 'No Product',
                         'Quantity' => 0
                     ];
-                    error_log("Added aisle without inventory: " . json_encode(end($aisles)));
                 } else {
                     // Add entries for each product in inventory
                     foreach ($aisle['inventory'] as $item) {
-                        error_log("Processing inventory item: " . json_encode($item));
-                        
                         $product = $mongoDb->Product->findOne(
-                            ['ProductID' => (int)$item['ProductID']],
-                            ['projection' => ['Name' => 1]]
+                            ['ProductID' => (int)$item['ProductID']]
                         );
-        
-                        if (!$product) {
-                            error_log("Product with ID " . $item['ProductID'] . " not found.");
-                        }
-        
+                        
                         $aisles[] = [
-                            'AisleNr' => (int)$aisle['AisleNr'],
+                            'AisleNr' => $aisle['AisleNr'],
                             'AisleName' => $aisle['Name'],
-                            'ProductName' => $product['Name'] ?? 'Unknown Product',
+                            'ProductName' => $product ? $product['Name'] : 'Unknown Product',
                             'Quantity' => (int)$item['quantity']
                         ];
-                        error_log("Added aisle with inventory: " . json_encode(end($aisles)));
                     }
                 }
             }
-        } else {
-            error_log("No aisles found or invalid aisles structure.");
         }
         
         error_log("Final aisles array: " . json_encode($aisles));

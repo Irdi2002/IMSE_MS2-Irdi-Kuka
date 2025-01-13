@@ -142,13 +142,37 @@ try {
             padding: 20px;
             background-color: #f0f8ff; /* AliceBlue */
         }
-        h1 {
+        h1, h2 {
             text-align: center;
             color: #0078D7; /* Vibrant Blue */
         }
         .form-container {
             max-width: 600px;
             margin: 0 auto;
+        }
+        .nav-buttons {
+            margin-bottom: 20px;
+            text-align: left;
+            margin-left: calc(50% - 300px);
+        }
+        .nav-buttons a {
+            text-decoration: none;
+            font-size: 16px;
+            color: white;
+            background-color: #0078D7;
+            padding: 10px 15px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            margin-right: 10px;
+        }
+        .nav-buttons a:hover {
+            background-color: #005BB5;
+        }
+        .nav-buttons a svg {
+            margin-right: 5px;
         }
         form {
             background-color: #fff;
@@ -208,13 +232,23 @@ try {
 </head>
 <body>
     <h1>Item Transfer Report</h1>
+    <div class="nav-buttons">
+        <a href="home.php">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18px" height="18px">
+                <path fill="currentColor" d="M21 11H6.414l5.293-5.293-1.414-1.414L3.586 12l6.707 6.707 1.414-1.414L6.414 13H21v-2z"/>
+            </svg>
+            Home
+        </a>
+    </div>
+
     <div class="form-container">
         <form method="POST">
             <label for="item_no">Item Number:</label>
             <select id="item_no" name="item_no" required>
                 <option value="">Select an item</option>
                 <?php foreach ($items as $item): ?>
-                    <option value="<?= htmlspecialchars($item['ProductID']) ?>">
+                    <option value="<?= htmlspecialchars($item['ProductID']) ?>"
+                            <?= (isset($_POST['item_no']) && $_POST['item_no'] == $item['ProductID']) ? 'selected' : '' ?>>
                         <?= htmlspecialchars($item['Name']) ?>
                     </option>
                 <?php endforeach; ?>
@@ -224,6 +258,7 @@ try {
     </div>
 
     <?php if (!empty($transfers)): ?>
+        <h2>Report for Item: <?= htmlspecialchars($chosenItem) ?></h2>
         <table>
             <thead>
                 <tr>

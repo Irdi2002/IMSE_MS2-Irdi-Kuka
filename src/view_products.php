@@ -103,17 +103,22 @@ try {
             margin-bottom: 20px;
         }
         .btn-container a {
-            display: inline-block;
-            padding: 10px;
-            background-color: #0078D7;
-            color: white;
             text-decoration: none;
             font-size: 16px;
-            font-weight: bold;
+            color: white;
+            background-color: #0078D7;
+            padding: 10px 15px;
             border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease-in-out;
+            display: inline-flex;
+            align-items: center;
         }
         .btn-container a:hover {
             background-color: #005BB5;
+        }
+        .btn-container a svg {
+            margin-right: 5px;
         }
         table {
             width: 100%;
@@ -163,7 +168,12 @@ try {
 <body>
     <h1>Product List</h1>
     <div class="btn-container">
-        <a href="home.php">Home</a>
+        <a href="home.php">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18px" height="18px">
+                <path fill="currentColor" d="M21 11H6.414l5.293-5.293-1.414-1.414L3.586 12l6.707 6.707 1.414-1.414L6.414 13H21v-2z"/>
+            </svg>
+            Home
+        </a>
         <a href="insert_product.php">+ New Product</a>
     </div>
     <?php if (!empty($products)): ?>
