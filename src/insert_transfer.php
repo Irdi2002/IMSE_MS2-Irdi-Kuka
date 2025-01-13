@@ -272,17 +272,22 @@ try {
                 // 4) Post-Execution Handling
                 if ($allSuccess) {
                     $_SESSION['success_message'] = "Transfer created successfully (MongoDB).";
+                    header('Location: view_transfer.php?TransferID=' . $nextTransferID);
+                    exit;
                 } else {
                     // Attempt to rollback if possible
                     // Note: Without transactions, rollback is not guaranteed
                     // For simplicity, inform the user and log the error
                     $_SESSION['error_message'] = implode(" ", $errorMessages);
-                    // Optionally, you can implement manual rollback here
+                    header('Location: insert_transfer_form.php');
+                    exit;
                 }
             } catch (Exception $e) {
                 // Handle any unexpected errors
                 $_SESSION['error_message'] = "Transfer failed: " . $e->getMessage();
                 $_SESSION['form_data'] = $_POST;
+                header('Location: insert_transfer_form.php');
+                exit;
             }
         } else {
             // ----------------
@@ -374,15 +379,16 @@ try {
 
                 $pdo->commit();
                 $_SESSION['success_message'] = "Transfer created successfully.";
+                header('Location: view_transfer.php?TransferID=' . $transferID);
+                exit;
             } catch (Exception $e) {
                 $pdo->rollBack();
                 $_SESSION['error_message'] = $e->getMessage();
                 $_SESSION['form_data'] = $_POST;
+                header('Location: insert_transfer_form.php');
+                exit;
             }
         }
-
-        header('Location: insert_transfer_form.php');
-        exit;
     }
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();

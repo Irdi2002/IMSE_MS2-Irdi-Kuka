@@ -67,6 +67,28 @@ $pass = 'IMSEMS2';
         .btn:hover {
             background-color: #005BB5;
         }
+        .btn-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .btn-container a {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            background-color: #0078D7;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .btn-container a:hover {
+            background-color: #005BB5;
+        }
+        .btn-container a svg {
+            margin-right: 8px;
+        }
         .product-line {
             display: flex;
             align-items: center;
@@ -88,28 +110,6 @@ $pass = 'IMSEMS2';
             color: red;
             text-align: center;
             margin-bottom: 20px;
-        }
-        .btn-container {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .btn-container a {
-            display: inline-flex;
-            align-items: center;
-            background-color: #0078D7;
-            color: white;
-            text-decoration: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-        }
-        .btn-container a:hover {
-            background-color: #005BB5;
-        }
-        .btn-container svg {
-            margin-right: 8px;
         }
     </style>
     <script>
@@ -216,15 +216,16 @@ $pass = 'IMSEMS2';
 </script>
 </head>
 <body>
+    <h1>New Transfer</h1>
+
     <div class="btn-container">
         <a href="view_transfers.php">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18px" height="18px">
                 <path fill="currentColor" d="M21 11H6.414l5.293-5.293-1.414-1.414L3.586 12l6.707 6.707 1.414-1.414L6.414 13H21v-2z"/>
             </svg>
-            Transfer List
+            Transfers List
         </a>
     </div>
-    <h1>New Transfer</h1>
 
     <?php
     if (isset($_SESSION['success_message'])) {

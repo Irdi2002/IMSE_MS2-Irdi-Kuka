@@ -224,6 +224,28 @@ try {
         td {
             color: #555; /* Subtle Gray */
         }
+        .success-message {
+            color: #28a745;
+            text-align: center;
+            margin: 20px auto;
+            padding: 10px;
+            max-width: 600px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            margin: 20px auto;
+            padding: 10px;
+            max-width: 600px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
