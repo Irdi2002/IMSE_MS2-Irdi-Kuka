@@ -32,8 +32,54 @@ try {
             throw new Exception("Transfer not found.");
         }
 
+        // Fetch warehouse and aisle information
+        $originWarehouse = $mongoDb->Warehouse->findOne(
+            ['warehouseID' => $transfer['originWarehouseID']], 
+            ['projection' => ['name' => 1, 'aisles' => 1]]
+        );
+        $destinationWarehouse = $mongoDb->Warehouse->findOne(
+            ['warehouseID' => $transfer['destinationWarehouseID']], 
+            ['projection' => ['name' => 1, 'aisles' => 1]]
+        );
+
+        // Get aisle names
+        $originAisleName = 'Unknown';
+        if ($originWarehouse && isset($originWarehouse['aisles'])) {
+            foreach ($originWarehouse['aisles'] as $aisle) {
+                if ($aisle['AisleNr'] == $transfer['originAisle']) {
+                    $originAisleName = $aisle['Name'];
+                    break;
+                }
+            }
+        }
+
+        $destinationAisleName = 'Unknown';
+        if ($destinationWarehouse && isset($destinationWarehouse['aisles'])) {
+            foreach ($destinationWarehouse['aisles'] as $aisle) {
+                if ($aisle['AisleNr'] == $transfer['destinationAisle']) {
+                    $destinationAisleName = $aisle['Name'];
+                    break;
+                }
+            }
+        }
+
+        // Add warehouse and aisle names to transfer object
+        $transfer['OriginWarehouseName'] = $originWarehouse['name'] ?? 'Unknown Warehouse';
+        $transfer['DestinationWarehouseName'] = $destinationWarehouse['name'] ?? 'Unknown Warehouse';
+        $transfer['OriginAisle'] = $originAisleName;
+        $transfer['DestinationAisle'] = $destinationAisleName;
+
         // Fetch transfer lines from MongoDB (already part of the TransferHeader)
         $lines = $transfer['lines'];
+
+        // Fetch product names for the lines
+        foreach ($lines as &$line) {
+            $product = $mongoDb->Product->findOne(
+                ['ProductID' => $line['ProductID']], 
+                ['projection' => ['Name' => 1]]
+            );
+            $line['ProductName'] = $product['Name'] ?? 'Unknown Product';
+        }
     } else {
         // Use MySQL
         $pdo = new PDO($dsn, $user, $pass);

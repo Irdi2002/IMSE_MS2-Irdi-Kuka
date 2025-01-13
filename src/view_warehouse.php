@@ -1,64 +1,137 @@
 <?php
-// Database credentials
-$host = 'MySQLDockerContainer'; // MySQL container or host
-$db   = 'IMSE_MS2';             // Database name
+session_start();
+
+// MongoDB Configuration
+require_once '/var/www/html/vendor/autoload.php';
+$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
+$mongoClient = new MongoDB\Client($mongoUri);
+$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+
+// MySQL Configuration
+$host = 'MySQLDockerContainer'; // MySQL container name
+$db = 'IMSE_MS2';               // Database name
 $user = 'root';                 // MySQL username
-$pass = 'IMSEMS2';             // MySQL password
+$pass = 'IMSEMS2';              // MySQL root password
+$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Create a new PDO connection
-    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    // Determine whether to use MongoDB or MySQL based on session
+    $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
-    // Fetch the warehouse details by WarehouseName
-    $WarehouseName = $_GET['WarehouseName'] ?? null;
-    if (!$WarehouseName) {
-        echo "<p>Error: WarehouseName not provided.</p>";
-        exit;
+    // Get the warehouse name from URL
+    $warehouseName = $_GET['WarehouseName'] ?? null;
+
+    error_log("Value from WarehouseName used for filtering: " . json_encode($warehouseName));
+    if (!$warehouseName) {
+        throw new Exception("WarehouseName not provided.");
     }
 
-    // 1) Get the Warehouse record (including its integer PK WarehouseID)
-    $stmt = $pdo->prepare("
-        SELECT * 
-          FROM Warehouse 
-         WHERE WarehouseName = :WarehouseName
-    ");
-    $stmt->execute([':WarehouseName' => $WarehouseName]);
-    $warehouse = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($useMongoDb) {
+        // Find the warehouse in MongoDB using warehouseID
+        $warehouseId = (int)$warehouseName; // The URL parameter contains the warehouseID for MongoDB
+        $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => $warehouseId]);
+        
+        if (!$warehouse) {
+            throw new Exception("Warehouse not found with ID: " . $warehouseId);
+        }
 
-    if (!$warehouse) {
-        echo "<p>Error: Warehouse not found.</p>";
-        exit;
+        error_log("Found warehouse: " . json_encode($warehouse));
+        error_log("Aisles in warehouse: " . json_encode($warehouse['aisles'] ?? []));
+
+        // Format warehouse data to match MySQL structure
+        $formattedWarehouse = [
+            'WarehouseName' => $warehouse['name'],
+            'Address' => $warehouse['address'],
+            'Category' => $warehouse['category']
+        ];
+
+        // Prepare aisles data with inventory
+        $aisles = [];
+        if (isset($warehouse) && isset($warehouse['aisles']) && is_array($warehouse['aisles'])) {
+            error_log("Processing " . count($warehouse['aisles']) . " aisles");
+            foreach ($warehouse['aisles'] as $aisle) {
+                error_log("Processing aisle: " . json_encode($aisle));
+        
+                if (!isset($aisle['inventory']) || !is_array($aisle['inventory']) || empty($aisle['inventory'])) {
+                    // Add aisle with no products
+                    $aisles[] = [
+                        'AisleNr' => (int)$aisle['AisleNr'],
+                        'AisleName' => $aisle['Name'],
+                        'ProductName' => 'No Product',
+                        'Quantity' => 0
+                    ];
+                    error_log("Added aisle without inventory: " . json_encode(end($aisles)));
+                } else {
+                    // Add entries for each product in inventory
+                    foreach ($aisle['inventory'] as $item) {
+                        error_log("Processing inventory item: " . json_encode($item));
+                        
+                        $product = $mongoDb->Product->findOne(
+                            ['ProductID' => (int)$item['ProductID']],
+                            ['projection' => ['Name' => 1]]
+                        );
+        
+                        if (!$product) {
+                            error_log("Product with ID " . $item['ProductID'] . " not found.");
+                        }
+        
+                        $aisles[] = [
+                            'AisleNr' => (int)$aisle['AisleNr'],
+                            'AisleName' => $aisle['Name'],
+                            'ProductName' => $product['Name'] ?? 'Unknown Product',
+                            'Quantity' => (int)$item['quantity']
+                        ];
+                        error_log("Added aisle with inventory: " . json_encode(end($aisles)));
+                    }
+                }
+            }
+        } else {
+            error_log("No aisles found or invalid aisles structure.");
+        }
+        
+        error_log("Final aisles array: " . json_encode($aisles));
+
+        $warehouse = $formattedWarehouse;
+    } else {
+        // MySQL logic
+        $pdo = new PDO($dsn, $user, $pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // Get the Warehouse record
+        $stmt = $pdo->prepare("SELECT * FROM Warehouse WHERE WarehouseName = :WarehouseName");
+        $stmt->execute([':WarehouseName' => $warehouseName]);
+        $warehouse = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$warehouse) {
+            throw new Exception("Warehouse not found.");
+        }
+
+        // Extract the actual PK for further queries
+        $warehouseID = $warehouse['WarehouseID'];
+
+        // Fetch all Aisles with inventory
+        $aisleStmt = $pdo->prepare("
+            SELECT 
+                A.AisleNr,
+                A.AisleName,
+                A.Description,
+                COALESCE(P.Name, 'No Product') AS ProductName,
+                COALESCE(WI.Quantity, 0) AS Quantity
+            FROM Aisle A
+            LEFT JOIN WarehouseInventory WI
+                   ON A.WarehouseID = WI.WarehouseID
+                  AND A.AisleNr = WI.AisleNr
+            LEFT JOIN Product P
+                   ON WI.ProductID = P.ProductID
+            WHERE A.WarehouseID = :warehouseID
+            ORDER BY A.AisleNr, P.Name
+        ");
+        $aisleStmt->execute([':warehouseID' => $warehouseID]);
+        $aisles = $aisleStmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    // Extract the actual PK for further queries
-    $warehouseID = $warehouse['WarehouseID'];
-
-    // 2) Fetch all Aisles (left join with WarehouseInventory & Product)
-    //    This ensures you see all aisles, even if no products or zero quantity
-    $aisleStmt = $pdo->prepare("
-        SELECT 
-            A.AisleNr,
-            A.AisleName,
-            A.Description,
-            COALESCE(P.Name, 'No Product') AS ProductName,
-            WI.Quantity
-        FROM Aisle A
-        LEFT JOIN WarehouseInventory WI
-               ON A.WarehouseID = WI.WarehouseID
-              AND A.AisleNr = WI.AisleNr
-        LEFT JOIN Product P
-               ON WI.ProductID = P.ProductID
-        WHERE A.WarehouseID = :warehouseID
-        ORDER BY A.AisleNr, P.Name
-    ");
-    $aisleStmt->execute([':warehouseID' => $warehouseID]);
-    $aisles = $aisleStmt->fetchAll(PDO::FETCH_ASSOC);
-
-} catch (PDOException $e) {
+} catch (Exception $e) {
     echo "<p>Error: " . $e->getMessage() . "</p>";
-    die();
+    exit;
 }
 ?>
 
@@ -142,37 +215,32 @@ try {
     </div>
 
     <div class="details">
-        <p><strong>Warehouse Name:</strong> <?= htmlspecialchars($warehouse['WarehouseName']) ?></p>
+        <h2>Warehouse Details</h2>
+        <p><strong>Name:</strong> <?= htmlspecialchars($warehouse['WarehouseName']) ?></p>
         <p><strong>Address:</strong> <?= htmlspecialchars($warehouse['Address']) ?></p>
-        <p><strong>Category:</strong> <?= htmlspecialchars($warehouse['Category'] ?? '') ?></p>
-    </div>
+        <p><strong>Category:</strong> <?= htmlspecialchars($warehouse['Category']) ?></p>
 
-    <h2>Aisles and Products</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Aisle Nr</th>
-                <th>Aisle Name</th>
-                <th>Product Name</th>
-                <th>Quantity</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (!empty($aisles)): ?>
-                <?php foreach ($aisles as $row): ?>
+        <h3>Aisles and Products</h3>
+        <?php if (!empty($aisles)): ?>
+            <table border="1">
+                <tr>
+                    <th>Aisle Number</th>
+                    <th>Aisle Name</th>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                </tr>
+                <?php foreach ($aisles as $aisle): ?>
                     <tr>
-                        <td><?= htmlspecialchars($row['AisleNr']) ?></td>
-                        <td><?= htmlspecialchars($row['AisleName']) ?></td>
-                        <td><?= htmlspecialchars($row['ProductName']) ?></td>
-                        <td><?= htmlspecialchars($row['Quantity'] ?? '0') ?></td>
+                        <td><?= htmlspecialchars((string)$aisle['AisleNr']) ?></td>
+                        <td><?= htmlspecialchars($aisle['AisleName']) ?></td>
+                        <td><?= htmlspecialchars($aisle['ProductName']) ?></td>
+                        <td><?= htmlspecialchars((string)$aisle['Quantity']) ?></td>
                     </tr>
                 <?php endforeach; ?>
-            <?php else: ?>
-                <tr>
-                    <td colspan="4">No aisles found for this warehouse.</td>
-                </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+            </table>
+        <?php else: ?>
+            <p>No aisles found for this warehouse.</p>
+        <?php endif; ?>
+    </div>
 </body>
 </html>

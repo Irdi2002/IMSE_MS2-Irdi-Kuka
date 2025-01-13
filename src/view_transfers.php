@@ -19,43 +19,49 @@ try {
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     if ($useMongoDb) {
-        // Step 1: Fetch all warehouses and build mappings
-        $warehousesCursor = $mongoDb->Warehouse->find([]);
-
-        $warehouseNames = [];
-        $aisleNames = [];
-
-        foreach ($warehousesCursor as $warehouse) {
-            $warehouseID = (int)$warehouse['warehouseID'];
-            $warehouseNames[$warehouseID] = $warehouse['name'] ?? 'Unknown Warehouse';
-
-            if (isset($warehouse['aisles']) && is_array($warehouse['aisles'])) {
-                foreach ($warehouse['aisles'] as $aisle) {
-                    $aisleNr = (int)$aisle['AisleNr'];
-                    $aisleNames[$warehouseID][$aisleNr] = $aisle['Name'] ?? 'Unknown Aisle';
-                }
-            }
-        }
-
-        // Step 2: Fetch transfers from MongoDB
+        // Step 1: Fetch transfers from MongoDB
         $transfers = $mongoDb->TransferHeader->find([], [
             'sort' => ['TransferID' => 1],
         ]);
 
         $transferList = [];
         foreach ($transfers as $transfer) {
-            $originWarehouseID = (int)$transfer['originWarehouseID'];
-            $originAisleNr = (int)$transfer['originAisle'];
-            $destinationWarehouseID = (int)$transfer['destinationWarehouseID'];
-            $destinationAisleNr = (int)$transfer['destinationAisle'];
+            $originWarehouse = $mongoDb->Warehouse->findOne(
+                ['warehouseID' => $transfer['originWarehouseID']], 
+                ['projection' => ['name' => 1, 'aisles' => 1]]
+            );
+            $destinationWarehouse = $mongoDb->Warehouse->findOne(
+                ['warehouseID' => $transfer['destinationWarehouseID']], 
+                ['projection' => ['name' => 1, 'aisles' => 1]]
+            );
+
+            $originAisleName = 'Unknown';
+            if ($originWarehouse && isset($originWarehouse['aisles'])) {
+                foreach ($originWarehouse['aisles'] as $aisle) {
+                    if ($aisle['AisleNr'] == $transfer['originAisle']) {
+                        $originAisleName = $aisle['Name'];
+                        break;
+                    }
+                }
+            }
+
+            $destinationAisleName = 'Unknown';
+            if ($destinationWarehouse && isset($destinationWarehouse['aisles'])) {
+                foreach ($destinationWarehouse['aisles'] as $aisle) {
+                    if ($aisle['AisleNr'] == $transfer['destinationAisle']) {
+                        $destinationAisleName = $aisle['Name'];
+                        break;
+                    }
+                }
+            }
 
             $transferItem = [
                 'TransferID' => $transfer['TransferID'],
                 'TransferDate' => $transfer['transferDate']->toDateTime()->format('Y-m-d'),
-                'OriginWarehouseName' => $warehouseNames[$originWarehouseID] ?? 'Unknown Warehouse',
-                'OriginAisleName' => $aisleNames[$originWarehouseID][$originAisleNr] ?? 'Unknown Aisle',
-                'DestinationWarehouseName' => $warehouseNames[$destinationWarehouseID] ?? 'Unknown Warehouse',
-                'DestinationAisleName' => $aisleNames[$destinationWarehouseID][$destinationAisleNr] ?? 'Unknown Aisle',
+                'OriginWarehouseName' => $originWarehouse['name'] ?? 'Unknown Warehouse',
+                'OriginAisleName' => $originAisleName,
+                'DestinationWarehouseName' => $destinationWarehouse['name'] ?? 'Unknown Warehouse',
+                'DestinationAisleName' => $destinationAisleName,
             ];
 
             $transferList[] = $transferItem;
