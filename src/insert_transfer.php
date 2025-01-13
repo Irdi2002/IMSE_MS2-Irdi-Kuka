@@ -249,7 +249,8 @@ try {
                     // --- C) Insert Transfer Line into TransferHeader (for reference) ---
                     //
                     $transferLine = [
-                        'productID' => $productID,
+                        'TransferID' => $nextTransferID,
+                        'ProductID' => $productID,
                         'quantity'  => $quantity
                     ];
 

@@ -307,8 +307,8 @@ try {
             <tbody>
                 <?php foreach ($lines as $line): ?>
                     <tr>
-                        <td><?= htmlspecialchars($line['ProductID'] ?? $line['productID']) ?></td>
-                        <td><?= htmlspecialchars($line['ProductName'] ?? '') ?></td>
+                        <td><?= htmlspecialchars($line['ProductID'] ?? $line['ProductID']) ?></td>
+                        <td><?= htmlspecialchars($line['ProductName'] ?? $line['Name'] ?? 'Unknown Product') ?></td>
                         <td><?= htmlspecialchars($line['Quantity'] ?? $line['quantity']) ?></td>
                     </tr>
                 <?php endforeach; ?>
