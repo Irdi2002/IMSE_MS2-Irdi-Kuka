@@ -69,9 +69,10 @@ $pass = 'IMSEMS2';
         }
         .btn-container {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
+            justify-content: flex-start;
+            max-width: 600px;
+            margin: 0 auto 20px;
+            padding: 0;
         }
         .btn-container a {
             display: inline-flex;
