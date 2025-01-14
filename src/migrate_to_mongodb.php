@@ -60,18 +60,6 @@ function transformAisleData($aisleRow, $inventory) {
 }
 
 /**
- * Transform a SalesOrder + details into a single MongoDB document.
- */
-function transformSalesOrderData($orderRow, $details) {
-    return [
-        "_id"             => $orderRow["OrderID"],  // Keep as string or int as you prefer
-        "customerID"      => $orderRow["CustID"],
-        "totalOrderPrice" => (float)$orderRow["TotalOrderPrice"],
-        "items"           => $details
-    ];
-}
-
-/**
  * Transform a TransferHeader row + lines into a single MongoDB document.
  */
 function transformTransferHeaderData($headerRow, $lines) {
@@ -168,7 +156,7 @@ if ($result && $result->num_rows > 0) {
 // -----------------------------
 // MIGRATE STANDALONE TABLES
 // -----------------------------
-$standaloneTables = ['Vendor', 'Customer', 'Product'];
+$standaloneTables = ['Vendor', 'Customer', 'Product', 'PurchaseOrder', 'SalesOrder'];
 foreach ($standaloneTables as $table) {
     $sql = "SELECT * FROM $table";
     $result = $mysqli->query($sql);
@@ -187,6 +175,28 @@ foreach ($standaloneTables as $table) {
 
 // Close MySQL
 $mysqli->close();
+
+// Create indexes for better query performance
+try {
+    // echo "Creating indexes for optimal performance...\n";
+    
+    // Warehouse indexes
+    $mongoDb->Warehouse->createIndex(['warehouseID' => 1], ['unique' => true]);
+    $mongoDb->Warehouse->createIndex(['aisles.AisleNr' => 1]);
+    $mongoDb->Warehouse->createIndex(['aisles.inventory.ProductID' => 1]);
+    
+    // Product index
+    $mongoDb->Product->createIndex(['ProductID' => 1], ['unique' => true]);
+    
+    // TransferHeader indexes
+    $mongoDb->TransferHeader->createIndex(['TransferID' => 1], ['unique' => true]);
+    $mongoDb->TransferHeader->createIndex(['originWarehouseID' => 1]);
+    $mongoDb->TransferHeader->createIndex(['destinationWarehouseID' => 1]);
+    
+    // echo "Indexes created successfully!\n";
+} catch (Exception $e) {
+    echo "Error creating indexes: " . $e->getMessage() . "\n";
+}
 
 // Indicate we are now using MongoDB
 $_SESSION['use_mongodb'] = true;

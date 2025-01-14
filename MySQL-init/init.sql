@@ -1,7 +1,3 @@
--- -----------------------------------------------------
--- 1) DROP TABLES in reverse dependency order
---    (Children dropped before Parents)
--- -----------------------------------------------------
 DROP TABLE IF EXISTS `WarehouseInventory`;
 DROP TABLE IF EXISTS `TransferLines`;
 DROP TABLE IF EXISTS `TransferHeader`;
@@ -13,12 +9,6 @@ DROP TABLE IF EXISTS `Customer`;
 DROP TABLE IF EXISTS `Product`;
 DROP TABLE IF EXISTS `Warehouse`;
 
--- -----------------------------------------------------
--- 2) CREATE TABLES in correct dependency order
---    (Parents created before Children)
--- -----------------------------------------------------
-
--- 2.1) Warehouse
 CREATE TABLE `Warehouse` (
   `WarehouseID` int NOT NULL AUTO_INCREMENT,
   `WarehouseName` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
@@ -30,7 +20,6 @@ CREATE TABLE `Warehouse` (
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;
 
--- 2.2) Aisle (references Warehouse)
 CREATE TABLE `Aisle` (
   `WarehouseID` int NOT NULL,
   `AisleNr` int NOT NULL,
@@ -45,7 +34,6 @@ CREATE TABLE `Aisle` (
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;
 
--- Create the trigger for Aisle AFTER the Aisle table is created
 DELIMITER ;;
 CREATE TRIGGER `auto_increment_aislenr`
 BEFORE INSERT ON `Aisle`
@@ -61,7 +49,6 @@ BEGIN
 END;;
 DELIMITER ;
 
--- 2.3) Vendor
 CREATE TABLE `Vendor` (
   `VendorID` varchar(20) NOT NULL,
   `Name` varchar(100) NOT NULL,
@@ -73,7 +60,6 @@ CREATE TABLE `Vendor` (
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;
 
--- 2.4) Customer
 CREATE TABLE `Customer` (
   `CustID` varchar(20) NOT NULL,
   `Name` varchar(100) NOT NULL,
@@ -85,7 +71,6 @@ CREATE TABLE `Customer` (
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;
 
--- 2.5) Product
 CREATE TABLE `Product` (
   `ProductID` int NOT NULL AUTO_INCREMENT,
   `Name` varchar(100) NOT NULL,
@@ -99,7 +84,6 @@ CREATE TABLE `Product` (
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;
 
--- 2.6) PurchaseOrder (references Vendor)
 CREATE TABLE `PurchaseOrder` (
   `OrderID` varchar(20) NOT NULL,
   `VendorID` varchar(20) DEFAULT NULL,
@@ -115,7 +99,6 @@ CREATE TABLE `PurchaseOrder` (
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;
 
--- 2.7) SalesOrder (references Customer)
 CREATE TABLE `SalesOrder` (
   `OrderID` varchar(20) NOT NULL,
   `CustID` varchar(20) DEFAULT NULL,
@@ -132,7 +115,6 @@ CREATE TABLE `SalesOrder` (
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;
 
--- 2.9) TransferHeader (references Warehouse)
 CREATE TABLE `TransferHeader` (
   `TransferID` int NOT NULL AUTO_INCREMENT,
   `OriginWarehouseID` int DEFAULT NULL,
@@ -151,7 +133,6 @@ CREATE TABLE `TransferHeader` (
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;
 
--- 2.10) TransferLines (references TransferHeader & Product)
 CREATE TABLE `TransferLines` (
   `TransferLineID` int NOT NULL AUTO_INCREMENT,
   `TransferID` int DEFAULT NULL,
@@ -168,7 +149,6 @@ CREATE TABLE `TransferLines` (
   DEFAULT CHARSET=utf8mb4 
   COLLATE=utf8mb4_0900_ai_ci;
 
--- 2.11) WarehouseInventory (references Aisle & Product)
 CREATE TABLE `WarehouseInventory` (
   `InventoryID` int NOT NULL AUTO_INCREMENT,
   `WarehouseID` int NOT NULL,
