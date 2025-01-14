@@ -74,7 +74,6 @@ session_start();
     <?php endif; ?>
         
     <?php
-    // Display success message if available
     if (isset($_GET['message'])) {
         echo '<div class="success-message">' . htmlspecialchars($_GET['message']) . '</div>';
     }
@@ -86,12 +85,10 @@ session_start();
     <a href="view_warehouses.php" class="button">View Warehouses</a>
     <a href="report_item_transfers.php" class="button">Item Transfer Report</a>
         
-    <!-- New Generate Data Button -->
     <form action="generate_data_using_faker.php" method="POST" style="display:inline-block;">
         <button type="submit" class="button">Generate Data</button>
     </form>
 
-    <!-- New Migrate Data Button -->
     <form action="migrate_to_mongodb.php" method="POST" style="display:inline-block;">
         <button type="submit" class="button" <?php if (isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb']) echo 'disabled'; ?>>Migrate Data to MongoDB</button>
     </form>

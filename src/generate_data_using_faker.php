@@ -3,9 +3,6 @@ require_once __DIR__ . '/vendor/autoload.php'; // Composer autoload
 
 use Faker\Factory as FakerFactory;
 
-// ----------------------
-// 1) Connect to the database
-// ----------------------
 $host   = 'MySQLDockerContainer'; // MySQL container name
 $dbname = 'IMSE_MS2';             // Database name
 $user   = 'root';                 // MySQL username
@@ -19,24 +16,20 @@ try {
     die("Could not connect to the database. Error: " . $e->getMessage());
 }
 
-// Create Faker instance
+//Faker instance
 $faker = FakerFactory::create();
 $fakerUnique = $faker->unique(true); // Use unique generator
 
-// ----------------------
-// Helper arrays to store inserted IDs (to use as FKs)
-// ----------------------
+
 $warehouseIDs   = [];
-$aisleMap       = []; // Map WarehouseID => array of AisleNrs
+$aisleMap       = [];
 $vendorIDs      = [];
 $customerIDs    = [];
 $productIDs     = [];
 $salesOrderIDs  = [];
 $transferIDs    = [];
 
-// --------------------------------------------------
-// 2) Insert into Warehouse (AUTO_INCREMENT PK)
-// --------------------------------------------------
+
 $numWarehouses = 10; // Increase to 10 warehouses
 for ($i = 0; $i < $numWarehouses; $i++) {
     $warehouseName = $fakerUnique->company . ' Warehouse';
@@ -55,9 +48,7 @@ for ($i = 0; $i < $numWarehouses; $i++) {
     }
 }
 
-// --------------------------------------------------
-// 3) Insert into Aisle (Composite PK: WarehouseID + AisleNr)
-// --------------------------------------------------
+
 foreach ($warehouseIDs as $whID) {
     $aisleMap[$whID] = [];
     $numAisles = 5; // Create 5 aisles per warehouse
@@ -86,10 +77,8 @@ foreach ($warehouseIDs as $whID) {
     }
 }
 
-// --------------------------------------------------
-// 4) Insert into Vendor (VendorID PK)
-// --------------------------------------------------
-$numVendors = 15; // Increase to 15 vendors
+
+$numVendors = 15; 
 for ($i = 1; $i <= $numVendors; $i++) {
     $vendorID = 'V' . str_pad($i, 3, '0', STR_PAD_LEFT);
     $name     = $faker->company;
@@ -106,10 +95,8 @@ for ($i = 1; $i <= $numVendors; $i++) {
     $vendorIDs[] = $vendorID;
 }
 
-// --------------------------------------------------
-// 5) Insert into Customer (CustID PK)
-// --------------------------------------------------
-$numCustomers = 20; // Increase to 20 customers
+
+$numCustomers = 20; 
 for ($i = 1; $i <= $numCustomers; $i++) {
     $custID  = 'C' . str_pad($i, 3, '0', STR_PAD_LEFT);
     $name    = $faker->unique()->name;
@@ -126,9 +113,6 @@ for ($i = 1; $i <= $numCustomers; $i++) {
     $customerIDs[] = $custID;
 }
 
-// --------------------------------------------------
-// 6) Insert into Product (ProductID AUTO_INCREMENT)
-// --------------------------------------------------
 $numProducts = 50; // Create 50 products
 for ($i = 0; $i < $numProducts; $i++) {
     $prodName  = $faker->unique()->word . ' ' . strtoupper($faker->randomLetter);
@@ -147,10 +131,8 @@ for ($i = 0; $i < $numProducts; $i++) {
     $productIDs[] = $pdo->lastInsertId();
 }
 
-// --------------------------------------------------
-// 7) Insert into PurchaseOrder (OrderID PK)
-// --------------------------------------------------
-$numPurchaseOrders = 50; // Create 50 purchase orders
+
+$numPurchaseOrders = 50; 
 for ($i = 1; $i <= $numPurchaseOrders; $i++) {
     $orderID  = 'PO' . str_pad($i, 3, '0', STR_PAD_LEFT);
     $vendorID = $faker->randomElement($vendorIDs);
@@ -166,10 +148,7 @@ for ($i = 1; $i <= $numPurchaseOrders; $i++) {
     $stmt->execute([$orderID, $vendorID, $quantity, $uom, $price, $currency]);
 }
 
-// --------------------------------------------------
-// 8) Insert into SalesOrder (OrderID PK)
-// --------------------------------------------------
-$numSalesOrders = 50; // Create 50 sales orders
+$numSalesOrders = 50;
 for ($i = 1; $i <= $numSalesOrders; $i++) {
     $orderID         = 'SO' . str_pad($i, 3, '0', STR_PAD_LEFT);
     $custID          = $faker->randomElement($customerIDs);
@@ -188,10 +167,10 @@ for ($i = 1; $i <= $numSalesOrders; $i++) {
     $salesOrderIDs[] = $orderID;
 }
 
-// --------------------------------------------------
-// 10) Insert into TransferHeader (AUTO_INCREMENT PK)
-// --------------------------------------------------
+
 $numTransfers = 50; // Create 50 transfers
+$transferIDs  = [];
+
 for ($i = 0; $i < $numTransfers; $i++) {
     $originWarehouseID      = $faker->randomElement($warehouseIDs);
     $destinationWarehouseID = $faker->randomElement($warehouseIDs);
@@ -204,7 +183,8 @@ for ($i = 0; $i < $numTransfers; $i++) {
     $transferDate     = $faker->dateTimeBetween('-1 month', '+1 month')->format('Y-m-d');
 
     $stmt = $pdo->prepare("
-        INSERT INTO TransferHeader (OriginWarehouseID, OriginAisle, DestinationWarehouseID, DestinationAisle, TransferDate)
+        INSERT INTO TransferHeader 
+            (OriginWarehouseID, OriginAisle, DestinationWarehouseID, DestinationAisle, TransferDate)
         VALUES (?, ?, ?, ?, ?)
     ");
     $stmt->execute([
@@ -218,25 +198,22 @@ for ($i = 0; $i < $numTransfers; $i++) {
     $transferIDs[] = $pdo->lastInsertId();
 }
 
-// --------------------------------------------------
-// 11) Insert into TransferLines (TransferLineID AUTO_INCREMENT PK)
-// --------------------------------------------------
-$numTransferLines = 50; // Create 50 transfer lines
-for ($i = 0; $i < $numTransferLines; $i++) {
-    $transferID = $faker->randomElement($transferIDs);
-    $productID  = $faker->randomElement($productIDs);
-    $quantity   = $faker->numberBetween(1, 100);
 
-    $stmt = $pdo->prepare("
-        INSERT INTO TransferLines (TransferID, ProductID, Quantity)
-        VALUES (?, ?, ?)
-    ");
-    $stmt->execute([$transferID, $productID, $quantity]);
+foreach ($transferIDs as $transferID) {
+    $numLinesForThisTransfer = $faker->numberBetween(1, 5);
+
+    for ($lineCount = 0; $lineCount < $numLinesForThisTransfer; $lineCount++) {
+        $productID = $faker->randomElement($productIDs);
+        $quantity  = $faker->numberBetween(1, 100);
+
+        $stmt = $pdo->prepare("
+            INSERT INTO TransferLines (TransferID, ProductID, Quantity)
+            VALUES (?, ?, ?)
+        ");
+        $stmt->execute([$transferID, $productID, $quantity]);
+    }
 }
 
-// --------------------------------------------------
-// 12) Insert into WarehouseInventory (UNIQUE KEY: WarehouseID + AisleNr + ProductID)
-// --------------------------------------------------
 $numWarehouseInventories = 50; // Create 50 inventory records
 for ($i = 0; $i < $numWarehouseInventories; $i++) {
     $randomWarehouseID = $faker->randomElement($warehouseIDs);

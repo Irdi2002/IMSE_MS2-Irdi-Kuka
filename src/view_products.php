@@ -15,7 +15,6 @@ $pass = 'IMSEMS2';
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Determine whether to use MongoDB or MySQL based on session
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
@@ -23,7 +22,6 @@ try {
 
         if ($useMongoDb) {
             try {
-                // Delete the product itself
                 $mongoDb->Product->deleteOne(['_id' => $deleteID]);
 
                 header("Location: view_products.php");
@@ -36,7 +34,6 @@ try {
                 $pdo = new PDO($dsn, $user, $pass);
                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                // Delete the product itself
                 $deleteStmt = $pdo->prepare("DELETE FROM Product WHERE ProductID = :ProductID");
                 $deleteStmt->execute([':ProductID' => $deleteID]);
 

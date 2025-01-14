@@ -14,7 +14,6 @@ $uri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
 $mongoClient = new MongoDB\Client($uri);
 $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
-// Drop existing collections to avoid duplicates
 $mongoDb->Warehouse->drop();
 $mongoDb->Aisle->drop();
 $mongoDb->Vendor->drop();
@@ -26,16 +25,12 @@ $mongoDb->TransferHeader->drop();
 $mongoDb->TransferLines->drop();
 $mongoDb->WarehouseInventory->drop();
 
-// MySQL Configuration
 $mysqli = new mysqli("MySQLDockerContainer", "root", "IMSEMS2", "IMSE_MS2");
 
 if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
 
-/**
- * Transform a Warehouse row + its aisles into a MongoDB-friendly document.
- */
 function transformWarehouseData($warehouseRow, $aisles) {
     return [
         "warehouseID"     => (int)$warehouseRow["WarehouseID"],
@@ -46,9 +41,6 @@ function transformWarehouseData($warehouseRow, $aisles) {
     ];
 }
 
-/**
- * Transform an Aisle row + inventory into a nested sub-document.
- */
 function transformAisleData($aisleRow, $inventory) {
     return [
         "AisleNr"         => (int)$aisleRow["AisleNr"],
@@ -59,34 +51,25 @@ function transformAisleData($aisleRow, $inventory) {
     ];
 }
 
-/**
- * Transform a TransferHeader row + lines into a single MongoDB document.
- */
 function transformTransferHeaderData($headerRow, $lines) {
     return [
         "TransferID"                    => (int)$headerRow["TransferID"],
         "originWarehouseID"      => (int)$headerRow["OriginWarehouseID"],
         "destinationWarehouseID" => (int)$headerRow["DestinationWarehouseID"],
-        // Store the aisle numbers so we can later query them
         "originAisle"            => (int)$headerRow["OriginAisle"],
         "destinationAisle"       => (int)$headerRow["DestinationAisle"],
-        // Convert TransferDate to MongoDB UTCDateTime
         "transferDate"           => new MongoDB\BSON\UTCDateTime(strtotime($headerRow["TransferDate"]) * 1000),
         "lines"                  => $lines
     ];
 }
 
-// -----------------------------
-// MIGRATE WAREHOUSE + AISLE
-// -----------------------------
 $sql = "SELECT * FROM Warehouse";
 $result = $mysqli->query($sql);
 
 if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $warehouseID = $row["WarehouseID"];
-        
-        // Fetch Aisles for this warehouse
+
         $aisleSql = "SELECT * FROM Aisle WHERE WarehouseID = ?";
         $aisleStmt = $mysqli->prepare($aisleSql);
         $aisleStmt->bind_param("i", $warehouseID);
@@ -97,7 +80,6 @@ if ($result && $result->num_rows > 0) {
         while ($aisleRow = $aisleResult->fetch_assoc()) {
             $aisleNr = $aisleRow["AisleNr"];
             
-            // Fetch Inventory for each Aisle
             $inventorySql = "SELECT * FROM WarehouseInventory WHERE WarehouseID = ? AND AisleNr = ?";
             $inventoryStmt = $mysqli->prepare($inventorySql);
             $inventoryStmt->bind_param("ii", $warehouseID, $aisleNr);
@@ -120,9 +102,6 @@ if ($result && $result->num_rows > 0) {
     }
 }
 
-// -----------------------------
-// MIGRATE TRANSFER HEADER + LINES
-// -----------------------------
 $sql = "SELECT * FROM TransferHeader";
 $result = $mysqli->query($sql);
 
@@ -130,7 +109,6 @@ if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $transferID = $row["TransferID"];
         
-        // Fetch Transfer Lines
         $linesSql = "SELECT * FROM TransferLines WHERE TransferID = ?";
         $linesStmt = $mysqli->prepare($linesSql);
         $linesStmt->bind_param("i", $transferID);
@@ -139,23 +117,18 @@ if ($result && $result->num_rows > 0) {
         
         $lines = [];
         while ($lineRow = $linesResult->fetch_assoc()) {
-            // IMPORTANT: Also store TransferID in each line doc so we can match them easily later in queries
             $lines[] = [
-                "TransferID" => (int)$lineRow["TransferID"],  // or (string)$transferID, both are same
+                "TransferID" => (int)$lineRow["TransferID"], 
                 "ProductID"  => (int)$lineRow["ProductID"],
                 "quantity"   => (int)$lineRow["Quantity"]
             ];
         }
         
-        // Build the TransferHeader doc
         $transferHeader = transformTransferHeaderData($row, $lines);
         $mongoDb->TransferHeader->insertOne($transferHeader);
     }
 }
 
-// -----------------------------
-// MIGRATE STANDALONE TABLES
-// -----------------------------
 $standaloneTables = ['Vendor', 'Customer', 'Product', 'PurchaseOrder', 'SalesOrder'];
 foreach ($standaloneTables as $table) {
     $sql = "SELECT * FROM $table";
@@ -164,41 +137,31 @@ foreach ($standaloneTables as $table) {
     if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
             if ($table === 'Product') {
-                // Convert ProductID to integer if it's not already
                 $row['ProductID'] = (int)$row['ProductID'];
             }
-            // Insert with ProductID as an integer
             $mongoDb->$table->insertOne($row);
         }
     }
 }
 
-// Close MySQL
 $mysqli->close();
 
-// Create indexes for better query performance
-try {
-    // echo "Creating indexes for optimal performance...\n";
-    
-    // Warehouse indexes
+// Create indexes
+try {    
     $mongoDb->Warehouse->createIndex(['warehouseID' => 1], ['unique' => true]);
     $mongoDb->Warehouse->createIndex(['aisles.AisleNr' => 1]);
     $mongoDb->Warehouse->createIndex(['aisles.inventory.ProductID' => 1]);
     
-    // Product index
     $mongoDb->Product->createIndex(['ProductID' => 1], ['unique' => true]);
     
-    // TransferHeader indexes
     $mongoDb->TransferHeader->createIndex(['TransferID' => 1], ['unique' => true]);
     $mongoDb->TransferHeader->createIndex(['originWarehouseID' => 1]);
     $mongoDb->TransferHeader->createIndex(['destinationWarehouseID' => 1]);
     
-    // echo "Indexes created successfully!\n";
 } catch (Exception $e) {
     echo "Error creating indexes: " . $e->getMessage() . "\n";
 }
 
-// Indicate we are now using MongoDB
 $_SESSION['use_mongodb'] = true;
 
 // Redirect to home

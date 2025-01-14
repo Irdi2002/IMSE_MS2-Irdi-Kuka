@@ -15,10 +15,8 @@ $pass = 'IMSEMS2';              // MySQL root password
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Determine whether to use MongoDB or MySQL based on session
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
-    // Handle form submission
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = $_POST['name'] ?? null;
         $description = $_POST['description'] ?? null;
@@ -28,19 +26,16 @@ try {
         $currency = $_POST['currency'] ?? null;
 
         if ($useMongoDb) {
-            // Calculate the next ProductID
             $lastProduct = $mongoDb->Product->findOne([], [
-                'sort' => ['ProductID' => -1], // Sort in descending order
+                'sort' => ['ProductID' => -1],
                 'projection' => ['ProductID' => 1]
             ]);
         
-            // Ensure ProductID is treated as an integer
             $lastProductID = isset($lastProduct['ProductID']) ? (int)$lastProduct['ProductID'] : 0;
             $nextProductID = $lastProductID + 1;
         
-            // Insert the new product into MongoDB with ProductID as an integer
             $result = $mongoDb->Product->insertOne([
-                'ProductID' => $nextProductID, // No need for explicit type cast here as $nextProductID is already an integer
+                'ProductID' => $nextProductID,
                 'Name' => $name,
                 'Description' => $description,
                 'Weight' => $weight,
@@ -51,7 +46,6 @@ try {
         
             $productID = $nextProductID;
         } else {
-            // Use MySQL to insert the product
             $pdo = new PDO($dsn, $user, $pass);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -71,7 +65,6 @@ try {
             $productID = $pdo->lastInsertId();
         }
 
-        // Redirect to the edit page with a success message
         header("Location: view_product.php?ProductID=$productID&message=Product%20inserted%20successfully!");
         exit;
     }
@@ -92,11 +85,11 @@ try {
             font-family: Arial, sans-serif;
             margin: 20px;
             padding: 20px;
-            background-color: #f0f8ff; /* AliceBlue */
+            background-color: #f0f8ff;
         }
         h1 {
             text-align: center;
-            color: #0078D7; /* Vibrant Blue */
+            color: #0078D7;
         }
         form {
             background-color: #fff;
@@ -123,19 +116,19 @@ try {
             box-sizing: border-box;
         }
         input[type="submit"] {
-            background-color: #0078D7; /* Vibrant Blue */
+            background-color: #0078D7;
             color: white;
             border: none;
             cursor: pointer;
         }
         input[type="submit"]:hover {
-            background-color: #005BB5; /* Darker Blue */
+            background-color: #005BB5;
         }
         .btn-container {
             margin-bottom: 20px;
             text-align: left;
             max-width: 600px;
-            margin: 20px auto; /* Align container with form */
+            margin: 20px auto;
         }
         .btn-container a {
             display: inline-block;
@@ -150,7 +143,7 @@ try {
             transition: all 0.2s ease-in-out;
         }
         .btn-container a:hover {
-            background-color: #005BB5; /* Darker Blue */
+            background-color: #005BB5;
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
     </style>

@@ -15,11 +15,9 @@ $pass = 'IMSEMS2';              // MySQL root password
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Determine whether to use MongoDB or MySQL based on session
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     if ($useMongoDb) {
-        // Step 1: Fetch transfers from MongoDB
         $transfers = $mongoDb->TransferHeader->find([], [
             'sort' => ['TransferID' => 1],
         ]);

@@ -15,26 +15,21 @@ $pass = 'IMSEMS2';              // MySQL root password
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Determine whether to use MongoDB or MySQL based on session
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     if ($useMongoDb) {
-        // Fetch all warehouses from MongoDB
         $warehousesCursor = $mongoDb->Warehouse->find([], [
             'sort' => ['warehouseID' => 1]
         ]);
         $warehouses = iterator_to_array($warehousesCursor);
     } else {
-        // Create a new PDO connection
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Fetch all warehouses
         $stmt = $pdo->query("SELECT * FROM Warehouse ORDER BY WarehouseID");
         $warehouses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Exception $e) {
-    // Display an error message if connection fails
     echo "<p>Error: " . $e->getMessage() . "</p>";
     die();
 }

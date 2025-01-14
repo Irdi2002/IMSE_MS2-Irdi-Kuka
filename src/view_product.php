@@ -12,16 +12,14 @@ if ($useMongoDB) {
     $mongoClient = new MongoDB\Client($uri);
     $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
-    // Fetch the product by ProductID
     $productID = (int)($_GET['ProductID'] ?? null);
-    $message = $_GET['message'] ?? null; // Get the success message if available
+    $message = $_GET['message'] ?? null;
 
     if ($productID === null || $productID === '') {
         echo "<p>Error: Invalid ProductID provided.</p>";
         exit;
     }
 
-    // Fetch product data from MongoDB
     try {
         $product = $mongoDb->Product->findOne(['ProductID' => $productID]);
 
@@ -41,21 +39,18 @@ if ($useMongoDB) {
     $pass = 'IMSEMS2';              // MySQL root password
 
     try {
-        // Create a new PDO connection
         $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Fetch the product by ProductID
         $productID = (int)($_GET['ProductID'] ?? null);
-        $message = $_GET['message'] ?? null; // Get the success message if available
+        $message = $_GET['message'] ?? null;
 
         if ($productID === null || $productID === '') {
             echo "<p>Error: Invalid ProductID provided.</p>";
             exit;
         }
 
-        // Fetch product data from MySQL
         $stmt = $pdo->prepare("SELECT * FROM Product WHERE ProductID = :ProductID");
         $stmt->execute([':ProductID' => $productID]);
         $product = $stmt->fetch(PDO::FETCH_ASSOC);

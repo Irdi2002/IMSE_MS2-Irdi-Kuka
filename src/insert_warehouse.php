@@ -15,10 +15,8 @@ $pass = 'IMSEMS2';              // MySQL root password
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Determine whether to use MongoDB or MySQL based on session
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
-    // Handle form submission
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $warehouseName = $_POST['WarehouseName'] ?? null;
         $address = $_POST['address'] ?? null;
@@ -28,17 +26,7 @@ try {
         $fireExtinguishers = $_POST['fire_extinguisher'] ?? [];
 
         if ($useMongoDb) {
-            // Debug logging
-            error_log("Inserting warehouse into MongoDB:");
-            error_log("Warehouse Name: " . $warehouseName);
-            error_log("Address: " . $address);
-            error_log("Category: " . $category);
-            error_log("Number of aisles: " . count($aisleNames));
-            error_log("Aisle Names: " . print_r($aisleNames, true));
-            error_log("Aisle Descriptions: " . print_r($aisleDescriptions, true));
-            error_log("Fire Extinguishers: " . print_r($fireExtinguishers, true));
 
-            // Get the next warehouse ID
             $lastWarehouse = $mongoDb->Warehouse->findOne(
                 [],
                 [
@@ -48,10 +36,9 @@ try {
             );
             $nextWarehouseId = ($lastWarehouse ? $lastWarehouse['warehouseID'] : 0) + 1;
 
-            // Prepare aisles array
             $aisles = [];
             for ($i = 0; $i < count($aisleNames); $i++) {
-                if (!empty($aisleNames[$i])) {  // Only add aisle if name is not empty
+                if (!empty($aisleNames[$i])) {
                     $aisle = [
                         'AisleNr' => $i + 1,
                         'Name' => $aisleNames[$i],
@@ -64,7 +51,6 @@ try {
                 }
             }
 
-            // Insert warehouse with aisles
             $warehouse = [
                 'warehouseID' => $nextWarehouseId,
                 'name' => $warehouseName,
@@ -72,25 +58,21 @@ try {
                 'category' => $category,
                 'aisles' => $aisles
             ];
-            error_log("Final warehouse document: " . print_r($warehouse, true));
             
             $result = $mongoDb->Warehouse->insertOne($warehouse);
-            error_log("Insert result: " . print_r($result->getInsertedId(), true));
 
             echo "<p style='color:green;'>New warehouse and aisles added successfully</p>";
         } else {
-            // MySQL logic
+
             $pdo = new PDO($dsn, $user, $pass);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-            // Insert the warehouse
             $stmt = $pdo->prepare("
                 INSERT INTO Warehouse (WarehouseName, Address, Category)
                 VALUES (:warehouse_name, :address, :category)
             ");
             $stmt->execute(['warehouse_name' => $warehouseName, 'address' => $address, 'category' => $category]);
 
-            // Get the last inserted warehouse ID
             $warehouseID = $pdo->lastInsertId();
 
             // Insert aisles
@@ -271,7 +253,6 @@ try {
             <button type="button" class="add-aisle-btn" onclick="addAisleRow()">+ Add Aisle</button>
         </h2>
         <div id="aisles-container">
-            <!-- Initial aisle row -->
             <div class="aisle-container">
                 <div class="form-group">
                     <label for="aisle_name">Aisle Name:</label>

@@ -18,7 +18,6 @@ if (isset($_GET['warehouse_id'])) {
             $mongoClient = new MongoDB\Client($mongoUri);
             $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
-            // Fetch the warehouse to get aisles
             $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => (int)$warehouseID]);
 
             if (!$warehouse) {
@@ -26,7 +25,6 @@ if (isset($_GET['warehouse_id'])) {
                 exit;
             }
 
-            // Ensure 'aisles' exists in the warehouse document
             $aisleList = [];
             foreach ($warehouse['aisles'] as $aisle) {
                 $aisleList[] = [

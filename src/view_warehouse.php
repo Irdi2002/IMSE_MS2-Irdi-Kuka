@@ -15,10 +15,8 @@ $pass = 'IMSEMS2';              // MySQL root password
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Determine whether to use MongoDB or MySQL based on session
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
-    // Get the warehouse name from URL
     $warehouseName = $_GET['WarehouseName'] ?? null;
 
     error_log("Value from WarehouseName used for filtering: " . json_encode($warehouseName));
@@ -27,8 +25,7 @@ try {
     }
 
     if ($useMongoDb) {
-        // Find the warehouse in MongoDB using warehouseID
-        $warehouseId = (int)$warehouseName; // The URL parameter contains the warehouseID
+        $warehouseId = (int)$warehouseName;
         $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => $warehouseId]);
         
         if (!$warehouse) {
@@ -37,7 +34,6 @@ try {
 
         error_log("Found warehouse: " . json_encode($warehouse));
 
-        // Format warehouse data to match MySQL structure
         $formattedWarehouse = [
             'WarehouseName' => $warehouse['name'],
             'Address' => $warehouse['address'],
@@ -47,20 +43,14 @@ try {
         // Prepare aisles data with inventory
         $aisles = [];
         if (isset($warehouse['aisles'])) {
-            foreach ($warehouse['aisles'] as $aisle) {
-                error_log("Processing aisle: " . json_encode($aisle));
-                
-                // Check if inventory exists and has at least one item
+            foreach ($warehouse['aisles'] as $aisle) {          
                 if (!empty($aisle['inventory']) && isset($aisle['inventory'][0])) {
-                    error_log("Aisle has inventory: " . json_encode($aisle['inventory']));
                     // For aisles with inventory, show the first product
                     $item = $aisle['inventory'][0];
                     if (isset($item['ProductID'])) {
-                        error_log("Found product ID: " . $item['ProductID']);
                         $product = $mongoDb->Product->findOne(
                             ['ProductID' => (int)$item['ProductID']]
                         );
-                        error_log("Found product: " . json_encode($product));
                         
                         $aisles[] = [
                             'AisleNr' => $aisle['AisleNr'],
@@ -69,7 +59,6 @@ try {
                             'Quantity' => isset($item['quantity']) ? (int)$item['quantity'] : 0
                         ];
                     } else {
-                        error_log("No ProductID in inventory item");
                         // Invalid inventory item
                         $aisles[] = [
                             'AisleNr' => $aisle['AisleNr'],
@@ -79,7 +68,6 @@ try {
                         ];
                     }
                 } else {
-                    error_log("No inventory for aisle");
                     // For aisles without inventory
                     $aisles[] = [
                         'AisleNr' => $aisle['AisleNr'],
@@ -91,15 +79,12 @@ try {
             }
         }
         
-        error_log("Final aisles array: " . json_encode($aisles));
-
         $warehouse = $formattedWarehouse;
     } else {
         // MySQL logic
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Get the Warehouse record
         $stmt = $pdo->prepare("SELECT * FROM Warehouse WHERE WarehouseName = :WarehouseName");
         $stmt->execute([':WarehouseName' => $warehouseName]);
         $warehouse = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -108,10 +93,8 @@ try {
             throw new Exception("Warehouse not found.");
         }
 
-        // Extract the actual PK for further queries
         $warehouseID = $warehouse['WarehouseID'];
 
-        // Fetch all Aisles with inventory
         $aisleStmt = $pdo->prepare("
             SELECT 
                 A.AisleNr,

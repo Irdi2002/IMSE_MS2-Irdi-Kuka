@@ -15,7 +15,6 @@ $pass = 'IMSEMS2';              // MySQL root password
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Determine whether to use MongoDB or MySQL based on session
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     if ($useMongoDb) {
@@ -25,14 +24,12 @@ try {
 
         $transferID = (int)$_GET['TransferID'];
 
-        // Fetch transfer header from MongoDB
         $transfer = $mongoDb->TransferHeader->findOne(["TransferID" => $transferID]);
 
         if (!$transfer) {
             throw new Exception("Transfer not found.");
         }
 
-        // Fetch warehouse and aisle information
         $originWarehouse = $mongoDb->Warehouse->findOne(
             ['warehouseID' => $transfer['originWarehouseID']], 
             ['projection' => ['name' => 1, 'aisles' => 1]]
@@ -42,7 +39,6 @@ try {
             ['projection' => ['name' => 1, 'aisles' => 1]]
         );
 
-        // Get aisle names
         $originAisleName = 'Unknown';
         if ($originWarehouse && isset($originWarehouse['aisles'])) {
             foreach ($originWarehouse['aisles'] as $aisle) {
@@ -63,16 +59,13 @@ try {
             }
         }
 
-        // Add warehouse and aisle names to transfer object
         $transfer['OriginWarehouseName'] = $originWarehouse['name'] ?? 'Unknown Warehouse';
         $transfer['DestinationWarehouseName'] = $destinationWarehouse['name'] ?? 'Unknown Warehouse';
         $transfer['OriginAisle'] = $originAisleName;
         $transfer['DestinationAisle'] = $destinationAisleName;
 
-        // Fetch transfer lines from MongoDB (already part of the TransferHeader)
         $lines = $transfer['lines'];
 
-        // Fetch product names for the lines
         $formattedLines = [];
         foreach ($lines as $line) {
             $product = $mongoDb->Product->findOne(
@@ -87,7 +80,7 @@ try {
         }
         $lines = $formattedLines;
     } else {
-        // Use MySQL
+
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -97,7 +90,6 @@ try {
 
         $transferID = $_GET['TransferID'];
 
-        // Fetch transfer header from MySQL
         $stmt = $pdo->prepare("
             SELECT th.TransferID, th.TransferDate, 
                    th.OriginWarehouseID, th.OriginAisle, 
@@ -116,7 +108,6 @@ try {
             throw new Exception("Transfer not found.");
         }
 
-        // Fetch transfer lines from MySQL
         $lineStmt = $pdo->prepare("
             SELECT tl.ProductID, tl.Quantity, p.Name AS ProductName
               FROM TransferLines tl
