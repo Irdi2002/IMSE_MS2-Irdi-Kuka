@@ -9,10 +9,10 @@ services:
       MYSQL_DATABASE: IMSE_MS2
       MYSQL_ROOT_HOST: '%' 
     ports:
-      - "6000:3306"  # Connect to MySQL on host port 6060 (instead of default 3306)
+      - "6000:3306"
     volumes:
-      - ./src:/var/www/html # Persist your app's source code
-      - ./MySQL-init:/docker-entrypoint-initdb.d # Mount the SQL script directory
+      - ./src:/var/www/html
+      - ./MySQL-init:/docker-entrypoint-initdb.d
     networks:
     - IMSEDockerNetwork
 
@@ -24,7 +24,7 @@ services:
     environment:
       ADMINER_DEFAULT_SERVER: MySQLDockerContainer
     ports:
-      - "6080:8080"  # Expose Adminer on host port 3000 (instead of 8080)
+      - "6080:8080"
     networks:
     - IMSEDockerNetwork
 
@@ -37,7 +37,7 @@ services:
     volumes:
       - mongo-data:/data/db
     ports:
-      - "27018:27017"  # Expose MongoDB on host port 27018 (instead of default 27017)
+      - "27018:27017"
     networks:
     - IMSEDockerNetwork
 
@@ -51,7 +51,7 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: Password1
       ME_CONFIG_MONGODB_SERVER: MyMongoDBContainer
     ports:
-      - "6081:8081"  # Expose MongoDB Express on host port 3002 (instead of 8081)
+      - "6081:8081"
     networks:
     - IMSEDockerNetwork
 
@@ -60,13 +60,12 @@ services:
         context: .
       container_name: php-app-container
       ports:
-        - "6060:80" # Map port 6060 on the host to port 80 in the container
+        - "6060:80"
       networks:
         - IMSEDockerNetwork
 
 networks:
   IMSEDockerNetwork:
-    # external: true # Use the existing network
 
 volumes:
   mysql-data:
