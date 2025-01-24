@@ -1,22 +1,93 @@
 <?php
 session_start();
 
-// Database credentials
+// MongoDB Configuration
+require_once '/var/www/html/vendor/autoload.php';
+$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
+$mongoClient = new MongoDB\Client($mongoUri);
+$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+
+// MySQL Configuration
 $host = 'MySQLDockerContainer'; // MySQL container name
-$db = 'IMSE_MS2';               // Updated database name
+$db = 'IMSE_MS2';               // Database name
 $user = 'root';                 // MySQL username
 $pass = 'IMSEMS2';              // MySQL root password
+$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Create a new PDO connection
-    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass);
+    $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
-    // Set error mode to exceptions
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    if ($useMongoDb) {
+        if (!isset($_GET['TransferID'])) {
+            throw new Exception("TransferID not provided.");
+        }
 
-    // Fetch transfer details
-    if (isset($_GET['TransferID'])) {
+        $transferID = (int)$_GET['TransferID'];
+
+        $transfer = $mongoDb->TransferHeader->findOne(["TransferID" => $transferID]);
+
+        if (!$transfer) {
+            throw new Exception("Transfer not found.");
+        }
+
+        $originWarehouse = $mongoDb->Warehouse->findOne(
+            ['warehouseID' => $transfer['originWarehouseID']], 
+            ['projection' => ['name' => 1, 'aisles' => 1]]
+        );
+        $destinationWarehouse = $mongoDb->Warehouse->findOne(
+            ['warehouseID' => $transfer['destinationWarehouseID']], 
+            ['projection' => ['name' => 1, 'aisles' => 1]]
+        );
+
+        $originAisleName = 'Unknown';
+        if ($originWarehouse && isset($originWarehouse['aisles'])) {
+            foreach ($originWarehouse['aisles'] as $aisle) {
+                if ($aisle['AisleNr'] == $transfer['originAisle']) {
+                    $originAisleName = $aisle['Name'];
+                    break;
+                }
+            }
+        }
+
+        $destinationAisleName = 'Unknown';
+        if ($destinationWarehouse && isset($destinationWarehouse['aisles'])) {
+            foreach ($destinationWarehouse['aisles'] as $aisle) {
+                if ($aisle['AisleNr'] == $transfer['destinationAisle']) {
+                    $destinationAisleName = $aisle['Name'];
+                    break;
+                }
+            }
+        }
+
+        $transfer['OriginWarehouseName'] = $originWarehouse['name'] ?? 'Unknown Warehouse';
+        $transfer['DestinationWarehouseName'] = $destinationWarehouse['name'] ?? 'Unknown Warehouse';
+        $transfer['OriginAisle'] = $originAisleName;
+        $transfer['DestinationAisle'] = $destinationAisleName;
+
+        $lines = $transfer['lines'];
+
+        $formattedLines = [];
+        foreach ($lines as $line) {
+            $product = $mongoDb->Product->findOne(
+                ['ProductID' => (int)$line['ProductID']], 
+                ['projection' => ['Name' => 1]]
+            );
+            $formattedLines[] = [
+                'ProductID' => $line['ProductID'],
+                'ProductName' => $product['Name'] ?? 'Unknown Product',
+                'Quantity' => $line['quantity']
+            ];
+        }
+        $lines = $formattedLines;
+    } else {
+
+        $pdo = new PDO($dsn, $user, $pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        if (!isset($_GET['TransferID'])) {
+            throw new Exception("TransferID not provided.");
+        }
+
         $transferID = $_GET['TransferID'];
 
         $stmt = $pdo->prepare("
@@ -37,7 +108,6 @@ try {
             throw new Exception("Transfer not found.");
         }
 
-        // Fetch transfer lines
         $lineStmt = $pdo->prepare("
             SELECT tl.ProductID, tl.Quantity, p.Name AS ProductName
               FROM TransferLines tl
@@ -46,8 +116,6 @@ try {
         ");
         $lineStmt->execute([':transfer_id' => $transferID]);
         $lines = $lineStmt->fetchAll(PDO::FETCH_ASSOC);
-    } else {
-        throw new Exception("TransferID not provided.");
     }
 } catch (Exception $e) {
     $_SESSION['error_message'] = $e->getMessage();
@@ -147,6 +215,28 @@ try {
         td {
             color: #555; /* Subtle Gray */
         }
+        .success-message {
+            color: #28a745;
+            text-align: center;
+            margin: 20px auto;
+            padding: 10px;
+            max-width: 600px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            margin: 20px auto;
+            padding: 10px;
+            max-width: 600px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -172,19 +262,29 @@ try {
 
     <div class="container">
         <label>Origin Warehouse:</label>
-        <div class="info"><?= htmlspecialchars($transfer['OriginWarehouseName']) ?></div>
+        <div class="info">
+            <?= htmlspecialchars($transfer['OriginWarehouseName'] ?? $transfer['originWarehouseID']) ?>
+        </div>
 
         <label>Origin Aisle:</label>
-        <div class="info"><?= htmlspecialchars($transfer['OriginAisle']) ?></div>
+        <div class="info">
+            <?= htmlspecialchars($transfer['OriginAisle'] ?? $transfer['originAisle']) ?>
+        </div>
 
         <label>Destination Warehouse:</label>
-        <div class="info"><?= htmlspecialchars($transfer['DestinationWarehouseName']) ?></div>
+        <div class="info">
+            <?= htmlspecialchars($transfer['DestinationWarehouseName'] ?? $transfer['destinationWarehouseID']) ?>
+        </div>
 
         <label>Destination Aisle:</label>
-        <div class="info"><?= htmlspecialchars($transfer['DestinationAisle']) ?></div>
+        <div class="info">
+            <?= htmlspecialchars($transfer['DestinationAisle'] ?? $transfer['destinationAisle']) ?>
+        </div>
 
         <label>Transfer Date:</label>
-        <div class="info"><?= htmlspecialchars($transfer['TransferDate']) ?></div>
+        <div class="info">
+            <?= htmlspecialchars($transfer['TransferDate'] ?? $transfer['transferDate']->toDateTime()->format('Y-m-d H:i:s')) ?>
+        </div>
 
         <h2>Transfer Lines</h2>
         <table>
@@ -198,9 +298,9 @@ try {
             <tbody>
                 <?php foreach ($lines as $line): ?>
                     <tr>
-                        <td><?= htmlspecialchars($line['ProductID']) ?></td>
-                        <td><?= htmlspecialchars($line['ProductName']) ?></td>
-                        <td><?= htmlspecialchars($line['Quantity']) ?></td>
+                        <td><?= htmlspecialchars($line['ProductID'] ?? $line['ProductID']) ?></td>
+                        <td><?= htmlspecialchars($line['ProductName'] ?? $line['Name'] ?? 'Unknown Product') ?></td>
+                        <td><?= htmlspecialchars($line['Quantity'] ?? $line['quantity']) ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

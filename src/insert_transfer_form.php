@@ -1,6 +1,22 @@
 <?php
 session_start();
+
+// Check if connected to MongoDB
+$useMongoDB = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'];
+
+// MongoDB Configuration
+require_once '/var/www/html/vendor/autoload.php';
+$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
+$mongoClient = new MongoDB\Client($mongoUri);
+$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+
+// MySQL Configuration
+$host = 'MySQLDockerContainer';
+$db = 'IMSE_MS2';
+$user = 'root';
+$pass = 'IMSEMS2';
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,11 +28,11 @@ session_start();
             font-family: Arial, sans-serif;
             margin: 20px;
             padding: 20px;
-            background-color: #f0f8ff; /* AliceBlue */
+            background-color: #f0f8ff;
         }
         h1 {
             text-align: center;
-            color: #0078D7; /* Vibrant Blue */
+            color: #0078D7;
         }
         form {
             background-color: #fff;
@@ -30,35 +46,49 @@ session_start();
             display: block;
             margin-bottom: 8px;
             font-weight: bold;
-            color: #333;
         }
-        select,
-        input[type="date"],
-        input[type="number"] {
+        select, input[type="date"], input[type="number"] {
             width: calc(100% - 20px);
             padding: 10px;
             margin-bottom: 15px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            box-sizing: border-box;
         }
         .btn {
-            background-color: #0078D7; /* Vibrant Blue */
+            background-color: #0078D7;
             color: white;
             border: none;
             cursor: pointer;
             padding: 8px 15px;
             border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease-in-out;
-            text-decoration: none;
-            display: inline-block;
             font-size: 14px;
             font-weight: bold;
         }
         .btn:hover {
-            background-color: #005BB5; /* Darker Blue */
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            background-color: #005BB5;
+        }
+        .btn-container {
+            display: flex;
+            justify-content: flex-start;
+            max-width: 600px;
+            margin: 0 auto 20px;
+            padding: 0;
+        }
+        .btn-container a {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            background-color: #0078D7;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .btn-container a:hover {
+            background-color: #005BB5;
+        }
+        .btn-container a svg {
+            margin-right: 8px;
         }
         .product-line {
             display: flex;
@@ -72,45 +102,6 @@ session_start();
         .transfer-lines {
             margin-bottom: 20px;
         }
-        .back-arrow {
-            margin-bottom: 20px;
-            text-align: left;
-            margin-left: calc(50% - 300px); /* Align with form start */
-        }
-        .back-arrow a {
-            text-decoration: none;
-            font-size: 16px;
-            color: white;
-            background-color: #0078D7; /* Vibrant Blue */
-            padding: 10px 15px;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease-in-out;
-            display: inline-flex;
-            align-items: center;
-        }
-        .back-arrow a:hover {
-            background-color: #005BB5; /* Darker Blue */
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-        }
-        .back-arrow a svg {
-            margin-right: 5px;
-        }
-        .delete-row {
-            background-color: #ff4d4d; /* Red */
-            color: white;
-            border: none;
-            cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 4px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease-in-out;
-            font-size: 12px;
-        }
-        .delete-row:hover {
-            background-color: #cc0000; /* Darker Red */
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-        }
         .success-message {
             color: green;
             text-align: center;
@@ -123,87 +114,87 @@ session_start();
         }
     </style>
     <script>
-        function updateDropdowns() {
-            const originSelect = document.getElementById('origin_warehouse');
-            const destinationSelect = document.getElementById('destination_warehouse');
+    function updateDropdowns() {
+        const originSelect = document.getElementById('origin_warehouse');
+        const destinationSelect = document.getElementById('destination_warehouse');
+        const selectedOrigin = originSelect.value;
 
-            const selectedOrigin = originSelect.value;
+        Array.from(destinationSelect.options).forEach(option => {
+            option.disabled = option.value === selectedOrigin;
+        });
 
-            Array.from(destinationSelect.options).forEach(option => {
-                option.disabled = option.value === selectedOrigin;
-            });
+        const selectedDestination = destinationSelect.value;
 
-            const selectedDestination = destinationSelect.value;
+        Array.from(originSelect.options).forEach(option => {
+            option.disabled = option.value === selectedDestination;
+        });
 
-            Array.from(originSelect.options).forEach(option => {
-                option.disabled = option.value === selectedDestination;
-            });
+        updateAisleDropdowns('origin_warehouse', 'origin_aisle');
+        updateAisleDropdowns('destination_warehouse', 'destination_aisle');
+    }
 
-            updateAisleDropdowns('origin_warehouse', 'origin_aisle');
-            updateAisleDropdowns('destination_warehouse', 'destination_aisle');
-        }
+    function updateAisleDropdowns(warehouseSelectId, aisleSelectId) {
+        const warehouseSelect = document.getElementById(warehouseSelectId);
+        const aisleSelect = document.getElementById(aisleSelectId);
+        const warehouseID = warehouseSelect.value;
+        console.log('Selected Warehouse ID:', warehouseID);
 
-        function updateAisleDropdowns(warehouseSelectId, aisleSelectId) {
-            const warehouseSelect = document.getElementById(warehouseSelectId);
-            const aisleSelect = document.getElementById(aisleSelectId);
-            const warehouseID = warehouseSelect.value;
-
-            fetch(`get_aisles.php?warehouse_id=${warehouseID}`)
-                .then(response => response.json())
-                .then(data => {
-                    const selectedAisle = aisleSelect.value;
+        fetch(`get_aisles.php?warehouse_id=${warehouseID}&useMongoDB=<?php echo $useMongoDB ? 'true' : 'false'; ?>`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error(data.error);
+                } else {
                     aisleSelect.innerHTML = '<option value="">Select Aisle</option>';
                     data.forEach(aisle => {
                         const option = document.createElement('option');
                         option.value = aisle.AisleNr;
                         option.textContent = `${aisle.AisleNr} - ${aisle.AisleName}`;
-                        if (aisle.AisleNr == selectedAisle) {
-                            option.selected = true;
-                        }
                         aisleSelect.appendChild(option);
                     });
                     updateProductDropdowns();
-                })
-                .catch(error => console.error('Error fetching aisles:', error));
-        }
+                }
+            })
+            .catch(error => console.error('Error fetching aisles:', error));
+    }
 
-        function updateProductDropdowns() {
-            const originWarehouseSelect = document.getElementById('origin_warehouse');
-            const originAisleSelect = document.getElementById('origin_aisle');
-            const originWarehouseID = originWarehouseSelect.value;
-            const originAisleNr = originAisleSelect.value;
+    function updateProductDropdowns() {
+        const originWarehouseSelect = document.getElementById('origin_warehouse');
+        const originAisleSelect = document.getElementById('origin_aisle');
+        const originWarehouseID = originWarehouseSelect.value;
+        const originAisleNr = originAisleSelect.value;
+        console.log('Selected originWarehouseID:', originWarehouseID);
+        console.log('Selected originAisleNr:', originAisleNr);
 
-            if (originWarehouseID && originAisleNr) {
-                fetch(`get_products.php?warehouse_id=${originWarehouseID}&aisle_nr=${originAisleNr}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const productSelects = document.querySelectorAll('select[name="product_id[]"]');
-                        productSelects.forEach(select => {
-                            const selectedProduct = select.value;
-                            select.innerHTML = '<option value="">Select Product</option>';
-                            data.forEach(product => {
-                                const option = document.createElement('option');
-                                option.value = product.ProductID;
-                                option.textContent = `${product.ProductID} - ${product.Name} - ${product.Quantity}`;
-                                if (product.ProductID == selectedProduct) {
-                                    option.selected = true;
-                                }
-                                select.appendChild(option);
-                            });
+        if (originWarehouseID && originAisleNr) {
+            fetch(`get_products.php?warehouse_id=${originWarehouseID}&aisle_nr=${originAisleNr}&useMongoDB=<?php echo $useMongoDB ? 'true' : 'false'; ?>`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('Error:', data.error);
+                        return;
+                    }
+                    const productSelects = document.querySelectorAll('select[name="product_id[]"]');
+                    productSelects.forEach(select => {
+                        const selectedProduct = select.value;
+                        select.innerHTML = '<option value="">Select Product</option>';
+                        data.forEach(product => {
+                            const option = document.createElement('option');
+                            option.value = product.ProductID;
+                            option.textContent = `${product.ProductID} - ${product.Name} (${product.Quantity})`;
+                            if (product.ProductID == selectedProduct) {
+                                option.selected = true;
+                            }
+                            select.appendChild(option);
                         });
-                    })
-                    .catch(error => console.error('Error fetching products:', error));
-            }
+                    });
+                })
+                .catch(error => console.error('Error fetching products:', error));
         }
+    }
 
-        function deleteRow(button) {
-            const row = button.parentElement;
-            row.remove();
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('origin_aisle').addEventListener('change', updateProductDropdowns);
-        });
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('origin_aisle').addEventListener('change', updateProductDropdowns);
 
         document.getElementById('add-line').addEventListener('click', function () {
             const transferLinesContainer = document.getElementById('transfer-lines');
@@ -215,7 +206,6 @@ session_start();
                     </select>
                     <label for="quantity">Quantity:</label>
                     <input type="number" name="quantity[]" placeholder="Enter Quantity" min="1" required>
-                    <button type="button" class="delete-row" onclick="deleteRow(this)">Delete</button>
                 </div>
             `;
             transferLinesContainer.insertAdjacentHTML('beforeend', lineFields);
@@ -223,16 +213,18 @@ session_start();
         });
 
         updateDropdowns();
-    </script>
+    });
+</script>
 </head>
 <body>
     <h1>New Transfer</h1>
-    <div class="back-arrow">
+
+    <div class="btn-container">
         <a href="view_transfers.php">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18px" height="18px">
                 <path fill="currentColor" d="M21 11H6.414l5.293-5.293-1.414-1.414L3.586 12l6.707 6.707 1.414-1.414L6.414 13H21v-2z"/>
             </svg>
-            Transfer List
+            Transfers List
         </a>
     </div>
 
@@ -252,22 +244,22 @@ session_start();
         <select id="origin_warehouse" name="origin_warehouse" onchange="updateDropdowns()" required>
             <option value="">Select Origin Warehouse</option>
             <?php
-                $host = 'MySQLDockerContainer';
-                $db = 'IMSE_MS2';
-                $user = 'root';
-                $pass = 'IMSEMS2';
-
+            if ($useMongoDB) {
+                $warehouses = $mongoDb->Warehouse->find();
+                foreach ($warehouses as $warehouse) {
+                    echo "<option value='" . htmlspecialchars($warehouse['warehouseID']) . "'>" . htmlspecialchars($warehouse['name']) . "</option>";
+                }
+            } else {
                 try {
                     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
                     $stmt = $pdo->query("SELECT WarehouseID, WarehouseName FROM Warehouse");
-                    $warehouses = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                    foreach ($warehouses as $row) {
-                        echo "<option value=\"" . htmlspecialchars($row['WarehouseID']) . "\">" . htmlspecialchars($row['WarehouseName']) . "</option>";
+                    foreach ($stmt as $row) {
+                        echo "<option value='" . htmlspecialchars($row['WarehouseID']) . "'>" . htmlspecialchars($row['WarehouseName']) . "</option>";
                     }
-                } catch (PDOException $e) {
-                    echo "<p>Error: " . $e->getMessage() . "</p>";
+                } catch (Exception $e) {
+                    echo "<option>Error loading warehouses</option>";
                 }
+            }
             ?>
         </select>
 
@@ -280,9 +272,21 @@ session_start();
         <select id="destination_warehouse" name="destination_warehouse" onchange="updateDropdowns()" required>
             <option value="">Select Destination Warehouse</option>
             <?php
-                foreach ($warehouses as $row) {
-                    echo "<option value=\"" . htmlspecialchars($row['WarehouseID']) . "\">" . htmlspecialchars($row['WarehouseName']) . "</option>";
+            if ($useMongoDB) {
+                $warehouses = $mongoDb->Warehouse->find();
+                foreach ($warehouses as $warehouse) {
+                    echo "<option value='" . htmlspecialchars($warehouse['warehouseID']) . "'>" . htmlspecialchars($warehouse['name']) . "</option>";
                 }
+            } else {
+                try {
+                    $stmt = $pdo->query("SELECT WarehouseID, WarehouseName FROM Warehouse");
+                    foreach ($stmt as $row) {
+                        echo "<option value='" . htmlspecialchars($row['WarehouseID']) . "'>" . htmlspecialchars($row['WarehouseName']) . "</option>";
+                    }
+                } catch (Exception $e) {
+                    echo "<option>Error loading warehouses</option>";
+                }
+            }
             ?>
         </select>
 
@@ -295,41 +299,19 @@ session_start();
         <input type="date" id="transfer_date" name="transfer_date" required>
 
         <h2>Transfer Lines</h2>
-        <button type="button" id="add-line" class="btn" style="margin-bottom: 10px;">+ New Row</button>
-        <div class="transfer-lines" id="transfer-lines">
+        <button type="button" id="add-line" class="btn">+ Add Line</button>
+        <div id="transfer-lines" class="transfer-lines">
             <div class="product-line">
                 <label for="product_id">Product:</label>
-                <select id="product_id" name="product_id[]" required>
+                <select name="product_id[]" required>
                     <option value="">Select Product</option>
                 </select>
                 <label for="quantity">Quantity:</label>
-                <input type="number" id="quantity" name="quantity[]" placeholder="Enter Quantity" min="1" required>
-                <button type="button" class="delete-row" onclick="deleteRow(this)">Delete</button>
+                <input type="number" name="quantity[]" placeholder="Enter Quantity" min="1" required>
             </div>
         </div>
 
         <input type="submit" value="Create Transfer" class="btn">
     </form>
-
-    <script>
-        document.getElementById('add-line').addEventListener('click', function () {
-            const transferLinesContainer = document.getElementById('transfer-lines');
-            const lineFields = `
-                <div class="product-line">
-                    <label for="product_id">Product:</label>
-                    <select name="product_id[]" required>
-                        <option value="">Select Product</option>
-                    </select>
-                    <label for="quantity">Quantity:</label>
-                    <input type="number" name="quantity[]" placeholder="Enter Quantity" min="1" required>
-                    <button type="button" class="delete-row" onclick="deleteRow(this)">Delete</button>
-                </div>
-            `;
-            transferLinesContainer.insertAdjacentHTML('beforeend', lineFields);
-            updateProductDropdowns();
-        });
-
-        updateDropdowns();
-    </script>
 </body>
 </html>

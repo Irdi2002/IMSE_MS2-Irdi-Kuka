@@ -1,53 +1,81 @@
 <?php
-// Database credentials
+session_start();
+
+// MongoDB Configuration
+require_once '/var/www/html/vendor/autoload.php';
+$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
+$mongoClient = new MongoDB\Client($mongoUri);
+$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+
+// MySQL Configuration
 $host = 'MySQLDockerContainer'; // MySQL container name
-$db = 'IMSE_MS2';               // Updated database name
+$db = 'IMSE_MS2';               // Database name
 $user = 'root';                 // MySQL username
-$pass = 'IMSEMS2';
+$pass = 'IMSEMS2';              // MySQL root password
+$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Create a new PDO connection
-    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass);
+    $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
-    // Set error mode to exceptions
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    // Handle form submission
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Insert the warehouse
         $warehouseName = $_POST['WarehouseName'] ?? null;
         $address = $_POST['address'] ?? null;
         $category = $_POST['category'] ?? null;
+        $aisleNames = $_POST['aisle_name'] ?? [];
+        $aisleDescriptions = $_POST['aisle_description'] ?? [];
+        $fireExtinguishers = $_POST['fire_extinguisher'] ?? [];
 
-        // Check for duplicates
-        $dupCheckStmt = $pdo->prepare("
-            SELECT COUNT(*) 
-              FROM Warehouse 
-             WHERE WarehouseName = :WarehouseName
-        ");
-        $dupCheckStmt->execute([':WarehouseName' => $warehouseName]);
-        $count = $dupCheckStmt->fetchColumn();
+        if ($useMongoDb) {
 
-        if ($count > 0) {
-            // Already exists, show an error
-            echo "<p style='color:red;'>Error: Warehouse name '<strong>" . htmlspecialchars($warehouseName) . "</strong>' already exists.</p>";
+            $lastWarehouse = $mongoDb->Warehouse->findOne(
+                [],
+                [
+                    'sort' => ['warehouseID' => -1],
+                    'projection' => ['warehouseID' => 1]
+                ]
+            );
+            $nextWarehouseId = ($lastWarehouse ? $lastWarehouse['warehouseID'] : 0) + 1;
+
+            $aisles = [];
+            for ($i = 0; $i < count($aisleNames); $i++) {
+                if (!empty($aisleNames[$i])) {
+                    $aisle = [
+                        'AisleNr' => $i + 1,
+                        'Name' => $aisleNames[$i],
+                        'fireExtinguisher' => in_array($i, array_keys($fireExtinguishers ?? [])),
+                        'description' => $aisleDescriptions[$i] ?? '',
+                        'inventory' => []
+                    ];
+                    $aisles[] = $aisle;
+                    error_log("Adding aisle: " . print_r($aisle, true));
+                }
+            }
+
+            $warehouse = [
+                'warehouseID' => $nextWarehouseId,
+                'name' => $warehouseName,
+                'address' => $address,
+                'category' => $category,
+                'aisles' => $aisles
+            ];
+            
+            $result = $mongoDb->Warehouse->insertOne($warehouse);
+
+            echo "<p style='color:green;'>New warehouse and aisles added successfully</p>";
         } else {
-            // Insert the warehouse
+
+            $pdo = new PDO($dsn, $user, $pass);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
             $stmt = $pdo->prepare("
                 INSERT INTO Warehouse (WarehouseName, Address, Category)
                 VALUES (:warehouse_name, :address, :category)
             ");
             $stmt->execute(['warehouse_name' => $warehouseName, 'address' => $address, 'category' => $category]);
 
-            // Get the last inserted warehouse ID
             $warehouseID = $pdo->lastInsertId();
 
             // Insert aisles
-            $aisleNames = $_POST['aisle_name'] ?? [];
-            $aisleDescriptions = $_POST['aisle_description'] ?? [];
-            $fireExtinguishers = $_POST['fire_extinguisher'] ?? []; // array of checkbox values
-
             for ($i = 0; $i < count($aisleNames); $i++) {
                 $aisleName = $aisleNames[$i];
                 $aisleDescription = $aisleDescriptions[$i] ?? '';
@@ -68,7 +96,7 @@ try {
             echo "<p style='color:green;'>New warehouse and aisles added successfully</p>";
         }
     }
-} catch (PDOException $e) {
+} catch (Exception $e) {
     echo "<p>Error: " . $e->getMessage() . "</p>";
     exit;
 }
@@ -187,7 +215,7 @@ try {
                     </div>
                     <div class="form-group fire-extinguisher-container">
                         <label>
-                            <input type="checkbox" name="fire_extinguisher[]" value="1"> Fire Extinguisher Available
+                            <input type="checkbox" name="fire_extinguisher[]"> Fire Extinguisher Available
                         </label>
                     </div>
                 </div>
@@ -236,7 +264,7 @@ try {
                 </div>
                 <div class="form-group fire-extinguisher-container">
                     <label>
-                        <input type="checkbox" name="fire_extinguisher[]" value="1"> Fire Extinguisher Available
+                        <input type="checkbox" name="fire_extinguisher[]"> Fire Extinguisher Available
                     </label>
                 </div>
             </div>

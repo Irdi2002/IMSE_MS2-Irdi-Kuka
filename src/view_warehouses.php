@@ -1,21 +1,35 @@
 <?php
-// Database credentials
+session_start();
+
+// MongoDB Configuration
+require_once '/var/www/html/vendor/autoload.php';
+$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
+$mongoClient = new MongoDB\Client($mongoUri);
+$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+
+// MySQL Configuration
 $host = 'MySQLDockerContainer'; // MySQL container name
-$db = 'IMSE_MS2';               // Updated database name
+$db = 'IMSE_MS2';               // Database name
 $user = 'root';                 // MySQL username
-$pass = 'IMSEMS2';
+$pass = 'IMSEMS2';              // MySQL root password
+$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
 try {
-    // Create a new PDO connection
-    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
-    // Fetch all warehouses
-    $stmt = $pdo->query("SELECT * FROM Warehouse ORDER BY WarehouseID");
-    $warehouses = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // Display an error message if connection fails
+    if ($useMongoDb) {
+        $warehousesCursor = $mongoDb->Warehouse->find([], [
+            'sort' => ['warehouseID' => 1]
+        ]);
+        $warehouses = iterator_to_array($warehousesCursor);
+    } else {
+        $pdo = new PDO($dsn, $user, $pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $stmt = $pdo->query("SELECT * FROM Warehouse ORDER BY WarehouseID");
+        $warehouses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (Exception $e) {
     echo "<p>Error: " . $e->getMessage() . "</p>";
     die();
 }
@@ -44,20 +58,22 @@ try {
             margin-bottom: 20px;
         }
         .btn-container a {
-            display: inline-block;
-            padding: 10px;
-            background-color: #0078D7;
-            color: white;
             text-decoration: none;
             font-size: 16px;
-            font-weight: bold;
+            color: white;
+            background-color: #0078D7;
+            padding: 10px 15px;
             border-radius: 5px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             transition: all 0.2s ease-in-out;
+            display: inline-flex;
+            align-items: center;
         }
         .btn-container a:hover {
-            background-color: #005BB5; /* Darker Blue */
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            background-color: #005BB5;
+        }
+        .btn-container a svg {
+            margin-right: 5px;
         }
         table {
             width: 100%;
@@ -101,7 +117,7 @@ try {
     <h1>Warehouse List</h1>
     <div class="btn-container">
         <a href="home.php" class="new-transfer-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18px" height="18px" style="vertical-align: middle;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18px" height="18px">
                 <path fill="currentColor" d="M21 11H6.414l5.293-5.293-1.414-1.414L3.586 12l6.707 6.707 1.414-1.414L6.414 13H21v-2z"/>
             </svg>
             Home
@@ -121,12 +137,18 @@ try {
                 <?php foreach ($warehouses as $warehouse): ?>
                     <tr>
                         <td>
-                            <a href="edit_warehouse.php?WarehouseName=<?= htmlspecialchars($warehouse['WarehouseName']) ?>">
-                                <?= htmlspecialchars($warehouse['WarehouseName']) ?>
-                            </a>
+                            <?php if ($useMongoDb): ?>
+                                <a href="view_warehouse.php?WarehouseName=<?= htmlspecialchars($warehouse['warehouseID']) ?>">
+                                    <?= htmlspecialchars($warehouse['name']) ?>
+                                </a>
+                            <?php else: ?>
+                                <a href="view_warehouse.php?WarehouseName=<?= htmlspecialchars($warehouse['WarehouseName']) ?>">
+                                    <?= htmlspecialchars($warehouse['WarehouseName']) ?>
+                                </a>
+                            <?php endif; ?>
                         </td>
-                        <td><?= htmlspecialchars($warehouse['Address']) ?></td>
-                        <td><?= htmlspecialchars($warehouse['Category']) ?></td>
+                        <td><?= htmlspecialchars($useMongoDb ? $warehouse['address'] : $warehouse['Address']) ?></td>
+                        <td><?= htmlspecialchars($useMongoDb ? $warehouse['category'] : $warehouse['Category']) ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

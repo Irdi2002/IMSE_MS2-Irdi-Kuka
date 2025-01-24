@@ -1,3 +1,7 @@
+<?php
+session_start();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -41,15 +45,53 @@
         .button:hover {
             background-color: #005BB5;
         }
+        .button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .success-message {
+            color: green;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .mysql {
+            color: red;
+            font-weight: bold;
+        }
+        .mongodb {
+            color: purple;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to the Inventory Management System</h1>
-        <a href="view_products.php" class="button">View Products</a>
-        <a href="view_transfers.php" class="button">View Transfers</a>
-        <a href="view_warehouses.php" class="button">View Warehouses</a>
-        <a href="report_item_transfers.php" class="button">Item Transfer Report</a>
+        
+    <?php if (isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb']): ?>
+        <p>Currently using: <strong class="mongodb">MongoDB</strong></p>
+    <?php else: ?>
+        <p>Currently using: <strong class="mysql">MySQL</strong></p>
+    <?php endif; ?>
+        
+    <?php
+    if (isset($_GET['message'])) {
+        echo '<div class="success-message">' . htmlspecialchars($_GET['message']) . '</div>';
+    }
+    ?>
+        
+    <h1>Welcome to the Inventory Management System</h1>
+    <a href="view_products.php" class="button">View Products</a>
+    <a href="view_transfers.php" class="button">View Transfers</a>
+    <a href="view_warehouses.php" class="button">View Warehouses</a>
+    <a href="report_item_transfers.php" class="button">Item Transfer Report</a>
+        
+    <form action="generate_data_using_faker.php" method="POST" style="display:inline-block;">
+        <button type="submit" class="button">Generate Data</button>
+    </form>
+
+    <form action="migrate_to_mongodb.php" method="POST" style="display:inline-block;">
+        <button type="submit" class="button" <?php if (isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb']) echo 'disabled'; ?>>Migrate Data to MongoDB</button>
+    </form>
     </div>
 </body>
 </html>
