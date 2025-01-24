@@ -43,32 +43,30 @@ try {
         // Prepare aisles data with inventory
         $aisles = [];
         if (isset($warehouse['aisles'])) {
-            foreach ($warehouse['aisles'] as $aisle) {          
-                if (!empty($aisle['inventory']) && isset($aisle['inventory'][0])) {
-                    // For aisles with inventory, show the first product
-                    $item = $aisle['inventory'][0];
-                    if (isset($item['ProductID'])) {
-                        $product = $mongoDb->Product->findOne(
-                            ['ProductID' => (int)$item['ProductID']]
-                        );
-                        
-                        $aisles[] = [
-                            'AisleNr' => $aisle['AisleNr'],
-                            'AisleName' => $aisle['Name'],
-                            'ProductName' => $product ? $product['Name'] : 'Unknown Product',
-                            'Quantity' => isset($item['quantity']) ? (int)$item['quantity'] : 0
-                        ];
-                    } else {
-                        // Invalid inventory item
-                        $aisles[] = [
-                            'AisleNr' => $aisle['AisleNr'],
-                            'AisleName' => $aisle['Name'],
-                            'ProductName' => 'No Product',
-                            'Quantity' => 0
-                        ];
+            foreach ($warehouse['aisles'] as $aisle) {
+                $hasProducts = false;
+                
+                if (!empty($aisle['inventory'])) {
+                    // For aisles with inventory, show all products
+                    foreach ($aisle['inventory'] as $item) {
+                        if (isset($item['ProductID'])) {
+                            $hasProducts = true;
+                            $product = $mongoDb->Product->findOne(
+                                ['ProductID' => (int)$item['ProductID']]
+                            );
+                            
+                            $aisles[] = [
+                                'AisleNr' => $aisle['AisleNr'],
+                                'AisleName' => $aisle['Name'],
+                                'ProductName' => $product ? $product['Name'] : 'Unknown Product',
+                                'Quantity' => isset($item['quantity']) ? (int)$item['quantity'] : 0
+                            ];
+                        }
                     }
-                } else {
-                    // For aisles without inventory
+                }
+                
+                // If aisle had no valid products, add an empty entry
+                if (!$hasProducts) {
                     $aisles[] = [
                         'AisleNr' => $aisle['AisleNr'],
                         'AisleName' => $aisle['Name'],
