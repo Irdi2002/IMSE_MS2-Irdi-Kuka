@@ -48,4 +48,3 @@ docker compose exec php-app-container php /var/www/html/migrate_to_mongodb.php
 ```
 
 After migration you can browse the MongoDB collections via Mongo Express at <http://localhost:6081>.
-
