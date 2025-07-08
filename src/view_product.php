@@ -1,16 +1,12 @@
 <?php
 session_start();
+require_once __DIR__ . '/db.php';
 
 // Check if connected to MongoDB
 $useMongoDB = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'];
 
 if ($useMongoDB) {
-    require_once '/var/www/html/vendor/autoload.php';
-
-    // MongoDB Configuration
-    $uri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
-    $mongoClient = new MongoDB\Client($uri);
-    $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+    $mongoDb = getMongoDb();
 
     $productID = (int)($_GET['ProductID'] ?? null);
     $message = $_GET['message'] ?? null;
@@ -32,16 +28,10 @@ if ($useMongoDB) {
         exit;
     }
 } else {
-    // Database credentials
-    $host = 'MySQLDockerContainer'; // MySQL container name
-    $db = 'IMSE_MS2';               // Updated database name
-    $user = 'root';                 // MySQL username
-    $pass = 'IMSEMS2';              // MySQL root password
+    // MySQL connection
+    $pdo = getPDO();
 
     try {
-        $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-        $pdo = new PDO($dsn, $user, $pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         $productID = (int)($_GET['ProductID'] ?? null);
         $message = $_GET['message'] ?? null;

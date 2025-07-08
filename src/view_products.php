@@ -1,21 +1,14 @@
 <?php
 session_start();
-
-// MongoDB Configuration
-require_once '/var/www/html/vendor/autoload.php';
-$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
-$mongoClient = new MongoDB\Client($mongoUri);
-$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
-
-// MySQL Configuration
-$host = 'MySQLDockerContainer';
-$db = 'IMSE_MS2';
-$user = 'root';
-$pass = 'IMSEMS2';
-$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+require_once __DIR__ . '/db.php';
 
 try {
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
+    if ($useMongoDb) {
+        $mongoDb = getMongoDb();
+    } else {
+        $pdo = getPDO();
+    }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
         $deleteID = $_POST['delete_id'];
@@ -31,8 +24,6 @@ try {
             }
         } else {
             try {
-                $pdo = new PDO($dsn, $user, $pass);
-                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
                 $deleteStmt = $pdo->prepare("DELETE FROM Product WHERE ProductID = :ProductID");
                 $deleteStmt->execute([':ProductID' => $deleteID]);
@@ -59,8 +50,7 @@ try {
             ];
         }
     } else {
-        $pdo = new PDO($dsn, $user, $pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo = getPDO();
         $stmt = $pdo->query("SELECT * FROM Product");
         $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

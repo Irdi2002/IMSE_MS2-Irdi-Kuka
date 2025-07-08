@@ -1,5 +1,5 @@
 <?php
-require_once '/var/www/html/vendor/autoload.php';
+require_once __DIR__ . '/db.php';
 
 header('Content-Type: application/json');
 
@@ -10,9 +10,7 @@ if (isset($_GET['warehouse_id']) && isset($_GET['aisle_nr'])) {
 
     if ($useMongoDB) {
         try {
-            $mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
-            $mongoClient = new MongoDB\Client($mongoUri);
-            $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+            $mongoDb = getMongoDb();
 
             // Fetch the warehouse to get the specific aisle
             $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => (int)$warehouseID]);
@@ -52,13 +50,9 @@ if (isset($_GET['warehouse_id']) && isset($_GET['aisle_nr'])) {
         }
     } else {
         // MySQL Implementation:
-        $host = 'MySQLDockerContainer';
-        $db = 'IMSE_MS2';
-        $user = 'root';
-        $pass = 'IMSEMS2';
 
         try {
-            $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
+            $pdo = getPDO();
             $stmt = $pdo->prepare("
                 SELECT P.ProductID, P.Name, WI.Quantity
                   FROM WarehouseInventory WI
@@ -76,5 +70,4 @@ if (isset($_GET['warehouse_id']) && isset($_GET['aisle_nr'])) {
     }
 } else {
     echo json_encode(['error' => 'Warehouse ID and Aisle Nr not provided']);
-}
-?>
+}?>
