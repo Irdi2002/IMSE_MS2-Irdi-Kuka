@@ -1,21 +1,14 @@
 <?php
 session_start();
-
-// MongoDB Configuration
-require_once '/var/www/html/vendor/autoload.php';
-$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
-$mongoClient = new MongoDB\Client($mongoUri);
-$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
-
-// MySQL Configuration
-$host = 'MySQLDockerContainer'; // MySQL container name
-$db = 'IMSE_MS2';               // Database name
-$user = 'root';                 // MySQL username
-$pass = 'IMSEMS2';              // MySQL root password
-$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+require_once __DIR__ . '/db.php';
 
 try {
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
+    if ($useMongoDb) {
+        $mongoDb = getMongoDb();
+    } else {
+        $pdo = getPDO();
+    }
 
     if ($useMongoDb) {
         $transfers = $mongoDb->TransferHeader->find([], [
@@ -66,8 +59,6 @@ try {
         }
     } else {
         // MySQL logic
-        $pdo = new PDO($dsn, $user, $pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         $stmt = $pdo->prepare("
             SELECT th.TransferID, th.TransferDate, 

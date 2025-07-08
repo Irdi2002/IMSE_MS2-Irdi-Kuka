@@ -1,18 +1,6 @@
 <?php
 session_start();
-
-// MongoDB Configuration
-require_once '/var/www/html/vendor/autoload.php';
-$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
-$mongoClient = new MongoDB\Client($mongoUri);
-$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
-
-// MySQL Configuration
-$host = 'MySQLDockerContainer'; // MySQL container name
-$db = 'IMSE_MS2';               // Database name
-$user = 'root';                 // MySQL username
-$pass = 'IMSEMS2';              // MySQL root password
-$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+require_once __DIR__ . '/db.php';
 
 try {
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
@@ -26,6 +14,7 @@ try {
         $currency = $_POST['currency'] ?? null;
 
         if ($useMongoDb) {
+            $mongoDb = getMongoDb();
             $lastProduct = $mongoDb->Product->findOne([], [
                 'sort' => ['ProductID' => -1],
                 'projection' => ['ProductID' => 1]
@@ -46,8 +35,7 @@ try {
         
             $productID = $nextProductID;
         } else {
-            $pdo = new PDO($dsn, $user, $pass);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo = getPDO();
 
             $stmt = $pdo->prepare(<<<SQL
                 INSERT INTO Product (Name, Description, Weight, UnitOfMeasure, Price, Currency)

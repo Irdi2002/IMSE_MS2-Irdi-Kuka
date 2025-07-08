@@ -1,22 +1,15 @@
 <?php
 session_start();
-
-// MongoDB Configuration
-require_once '/var/www/html/vendor/autoload.php';
-$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
-$mongoClient = new MongoDB\Client($mongoUri);
-$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
-
-// MySQL Configuration
-$host = 'MySQLDockerContainer';
-$db = 'IMSE_MS2';
-$user = 'root';
-$pass = 'IMSEMS2';
-$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+require_once __DIR__ . '/db.php';
 
 try {
     // Determine whether to use MongoDB or MySQL based on session
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
+    if ($useMongoDb) {
+        $mongoDb = getMongoDb();
+    } else {
+        $pdo = getPDO();
+    }
 
     $items = [];
     $transfers = [];
@@ -92,7 +85,6 @@ try {
         }
     } else {
         // MySQL logic
-        $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         $itemsStmt = $pdo->query("SELECT ProductID, Name FROM Product ORDER BY ProductID");
