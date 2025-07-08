@@ -1,10 +1,5 @@
 <?php
-require_once '/var/www/html/vendor/autoload.php';
-
-$host = 'MySQLDockerContainer';
-$db = 'IMSE_MS2';
-$user = 'root';
-$pass = 'IMSEMS2';
+require_once __DIR__ . '/db.php';
 
 header('Content-Type: application/json');
 
@@ -14,9 +9,7 @@ if (isset($_GET['warehouse_id'])) {
 
     if ($useMongoDB) {
         try {
-            $mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
-            $mongoClient = new MongoDB\Client($mongoUri);
-            $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+            $mongoDb = getMongoDb();
 
             $warehouse = $mongoDb->Warehouse->findOne(['warehouseID' => (int)$warehouseID]);
 
@@ -39,7 +32,7 @@ if (isset($_GET['warehouse_id'])) {
         }
     } else {
         try {
-            $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
+            $pdo = getPDO();
             $stmt = $pdo->prepare("SELECT AisleNr, AisleName FROM Aisle WHERE WarehouseID = :warehouse_id");
             $stmt->execute(['warehouse_id' => $warehouseID]);
 
