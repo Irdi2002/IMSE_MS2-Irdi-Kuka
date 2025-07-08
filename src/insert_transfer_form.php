@@ -4,17 +4,13 @@ session_start();
 // Check if connected to MongoDB
 $useMongoDB = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'];
 
-// MongoDB Configuration
-require_once '/var/www/html/vendor/autoload.php';
-$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
-$mongoClient = new MongoDB\Client($mongoUri);
-$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
+require_once __DIR__ . '/db.php';
 
-// MySQL Configuration
-$host = 'MySQLDockerContainer';
-$db = 'IMSE_MS2';
-$user = 'root';
-$pass = 'IMSEMS2';
+if ($useMongoDB) {
+    $mongoDb = getMongoDb();
+} else {
+    $pdo = getPDO();
+}
 ?>
 
 <!DOCTYPE html>
@@ -251,7 +247,7 @@ $pass = 'IMSEMS2';
                 }
             } else {
                 try {
-                    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
+                    $pdo = getPDO();
                     $stmt = $pdo->query("SELECT WarehouseID, WarehouseName FROM Warehouse");
                     foreach ($stmt as $row) {
                         echo "<option value='" . htmlspecialchars($row['WarehouseID']) . "'>" . htmlspecialchars($row['WarehouseName']) . "</option>";

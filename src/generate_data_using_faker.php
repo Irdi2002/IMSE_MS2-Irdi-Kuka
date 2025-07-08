@@ -1,20 +1,10 @@
 <?php
-require_once __DIR__ . '/vendor/autoload.php'; // Composer autoload
+require_once __DIR__ . '/db.php';
 
 use Faker\Factory as FakerFactory;
 
-$host   = 'MySQLDockerContainer'; // MySQL container name
-$dbname = 'IMSE_MS2';             // Database name
-$user   = 'root';                 // MySQL username
-$pass   = 'IMSEMS2';              // MySQL root password
+$pdo = getPDO();
 
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
-} catch (Exception $e) {
-    die("Could not connect to the database. Error: " . $e->getMessage());
-}
 
 //Faker instance
 $faker = FakerFactory::create();

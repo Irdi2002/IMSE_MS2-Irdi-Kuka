@@ -1,18 +1,6 @@
 <?php
 session_start();
-
-// MongoDB Configuration
-require_once '/var/www/html/vendor/autoload.php';
-$mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
-$mongoClient = new MongoDB\Client($mongoUri);
-$mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
-
-// MySQL Configuration
-$host = 'MySQLDockerContainer';
-$db = 'IMSE_MS2';
-$user = 'root';
-$pass = 'IMSEMS2';
-$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+require_once __DIR__ . '/db.php';
 
 try {
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
@@ -28,6 +16,7 @@ try {
         if ($useMongoDb) {
 
             try {
+                $mongoDb = getMongoDb();
                 $productIDs = isset($_POST['product_id']) ? $_POST['product_id'] : [];   // e.g. [101, 102, ...]
                 $quantities = isset($_POST['quantity']) ? $_POST['quantity'] : [];       // e.g. [10,  5,   ...]
 
@@ -259,8 +248,7 @@ try {
             }
         } else {
             try {
-                $pdo = new PDO($dsn, $user, $pass);
-                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $pdo = getPDO();
                 $pdo->beginTransaction();
 
                 $stmt = $pdo->prepare("
