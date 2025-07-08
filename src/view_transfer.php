@@ -11,8 +11,8 @@ try {
     }
 
     if ($useMongoDb) {
-        if (!isset($_GET['TransferID'])) {
-            throw new Exception("TransferID not provided.");
+        if (!isset($_GET['TransferID']) || !is_numeric($_GET['TransferID'])) {
+            throw new Exception("TransferID not provided or invalid.");
         }
 
         $transferID = (int)$_GET['TransferID'];
@@ -78,7 +78,7 @@ try {
             throw new Exception("TransferID not provided.");
         }
 
-        $transferID = $_GET['TransferID'];
+        $transferID = (int)$_GET['TransferID'];
 
         $stmt = $pdo->prepare("
             SELECT th.TransferID, th.TransferDate, 

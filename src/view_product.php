@@ -8,13 +8,13 @@ $useMongoDB = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'];
 if ($useMongoDB) {
     $mongoDb = getMongoDb();
 
-    $productID = (int)($_GET['ProductID'] ?? null);
     $message = $_GET['message'] ?? null;
 
-    if ($productID === null || $productID === '') {
+    if (!isset($_GET['ProductID']) || !is_numeric($_GET['ProductID'])) {
         echo "<p>Error: Invalid ProductID provided.</p>";
         exit;
     }
+    $productID = (int)$_GET['ProductID'];
 
     try {
         $product = $mongoDb->Product->findOne(['ProductID' => $productID]);
@@ -33,13 +33,13 @@ if ($useMongoDB) {
 
     try {
 
-        $productID = (int)($_GET['ProductID'] ?? null);
         $message = $_GET['message'] ?? null;
 
-        if ($productID === null || $productID === '') {
+        if (!isset($_GET['ProductID']) || !is_numeric($_GET['ProductID'])) {
             echo "<p>Error: Invalid ProductID provided.</p>";
             exit;
         }
+        $productID = (int)$_GET['ProductID'];
 
         $stmt = $pdo->prepare("SELECT * FROM Product WHERE ProductID = :ProductID");
         $stmt->execute([':ProductID' => $productID]);
