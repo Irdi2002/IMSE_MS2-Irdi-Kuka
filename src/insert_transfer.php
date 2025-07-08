@@ -18,6 +18,9 @@ try {
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+            die('Invalid CSRF token');
+        }
 
         $originWarehouse      = isset($_POST['origin_warehouse']) ? (int)$_POST['origin_warehouse'] : 0;
         $originAisle          = isset($_POST['origin_aisle']) ? (int)$_POST['origin_aisle'] : 0;
@@ -242,16 +245,19 @@ try {
 
 
                 if ($allSuccess) {
+                    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                     $_SESSION['success_message'] = "Transfer created successfully (MongoDB).";
                     header('Location: view_transfer.php?TransferID=' . $nextTransferID);
                     exit;
                 } else {
+                    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                     $_SESSION['error_message'] = implode(" ", $errorMessages);
                     header('Location: insert_transfer_form.php');
                     exit;
                 }
             } catch (Exception $e) {
 
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                 $_SESSION['error_message'] = "Transfer failed: " . $e->getMessage();
                 $_SESSION['form_data'] = $_POST;
                 header('Location: insert_transfer_form.php');
@@ -338,11 +344,13 @@ try {
                 }
 
                 $pdo->commit();
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                 $_SESSION['success_message'] = "Transfer created successfully.";
                 header('Location: view_transfer.php?TransferID=' . $transferID);
                 exit;
             } catch (Exception $e) {
                 $pdo->rollBack();
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                 $_SESSION['error_message'] = $e->getMessage();
                 $_SESSION['form_data'] = $_POST;
                 header('Location: insert_transfer_form.php');

@@ -1,6 +1,11 @@
 <?php
 session_start();
 
+// Generate CSRF token if it doesn't exist
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // MongoDB Configuration
 require_once '/var/www/html/vendor/autoload.php';
 $mongoUri = 'mongodb://Irdi:Password1@MyMongoDBContainer:27017';
@@ -18,6 +23,10 @@ try {
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+            die('Invalid CSRF token');
+        }
+
         $name = $_POST['name'] ?? null;
         $description = $_POST['description'] ?? null;
         $weight = $_POST['weight'] ?? null;
@@ -65,6 +74,8 @@ try {
             $productID = $pdo->lastInsertId();
         }
 
+        // Regenerate CSRF token after successful submission
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         header("Location: view_product.php?ProductID=$productID&message=Product%20inserted%20successfully!");
         exit;
     }
@@ -176,6 +187,8 @@ try {
 
         <label for="currency">Currency:</label>
         <input type="text" id="currency" name="currency" placeholder="e.g., USD, EUR" required>
+
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 
         <input type="submit" value="Insert Product">
     </form>

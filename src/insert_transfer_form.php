@@ -1,6 +1,10 @@
 <?php
 session_start();
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // Check if connected to MongoDB
 $useMongoDB = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'];
 
@@ -310,6 +314,8 @@ $pass = 'IMSEMS2';
                 <input type="number" name="quantity[]" placeholder="Enter Quantity" min="1" required>
             </div>
         </div>
+
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 
         <input type="submit" value="Create Transfer" class="btn">
     </form>
