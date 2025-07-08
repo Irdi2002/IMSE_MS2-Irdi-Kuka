@@ -18,8 +18,8 @@ try {
     $useMongoDb = isset($_SESSION['use_mongodb']) && $_SESSION['use_mongodb'] === true;
 
     if ($useMongoDb) {
-        if (!isset($_GET['TransferID'])) {
-            throw new Exception("TransferID not provided.");
+        if (!isset($_GET['TransferID']) || !is_numeric($_GET['TransferID'])) {
+            throw new Exception("TransferID not provided or invalid.");
         }
 
         $transferID = (int)$_GET['TransferID'];
@@ -84,11 +84,11 @@ try {
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        if (!isset($_GET['TransferID'])) {
-            throw new Exception("TransferID not provided.");
+        if (!isset($_GET['TransferID']) || !is_numeric($_GET['TransferID'])) {
+            throw new Exception("TransferID not provided or invalid.");
         }
 
-        $transferID = $_GET['TransferID'];
+        $transferID = (int)$_GET['TransferID'];
 
         $stmt = $pdo->prepare("
             SELECT th.TransferID, th.TransferDate, 

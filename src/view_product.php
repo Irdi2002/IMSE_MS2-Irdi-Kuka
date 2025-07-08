@@ -12,13 +12,13 @@ if ($useMongoDB) {
     $mongoClient = new MongoDB\Client($uri);
     $mongoDb = $mongoClient->selectDatabase('IMSE_MS2');
 
-    $productID = (int)($_GET['ProductID'] ?? null);
     $message = $_GET['message'] ?? null;
 
-    if ($productID === null || $productID === '') {
+    if (!isset($_GET['ProductID']) || !is_numeric($_GET['ProductID'])) {
         echo "<p>Error: Invalid ProductID provided.</p>";
         exit;
     }
+    $productID = (int)$_GET['ProductID'];
 
     try {
         $product = $mongoDb->Product->findOne(['ProductID' => $productID]);
@@ -43,13 +43,13 @@ if ($useMongoDB) {
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $productID = (int)($_GET['ProductID'] ?? null);
         $message = $_GET['message'] ?? null;
 
-        if ($productID === null || $productID === '') {
+        if (!isset($_GET['ProductID']) || !is_numeric($_GET['ProductID'])) {
             echo "<p>Error: Invalid ProductID provided.</p>";
             exit;
         }
+        $productID = (int)$_GET['ProductID'];
 
         $stmt = $pdo->prepare("SELECT * FROM Product WHERE ProductID = :ProductID");
         $stmt->execute([':ProductID' => $productID]);
